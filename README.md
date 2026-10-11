@@ -4,7 +4,7 @@
 > papers — for Systematic Literature Reviews (SLR) and Systematic Mapping
 > Studies (SMS).
 
-![CuteySnowball](static/img/favicon.svg)
+<img width="255" alt="CuteySnowball-logo" src="./static/img/logo.png" />
 
 CuteySnowball takes one or more **seed papers** (by DOI or PDF) **or a keyword
 query**, walks the citation graph in **both directions** — *forward* (who cites
