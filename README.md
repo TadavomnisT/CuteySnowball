@@ -43,7 +43,7 @@ See [`docs/references.md`](docs/references.md) for the full citation list.
 
 ---
 
-## ✨ Features
+## Features
 
 - **Two start modes**
   1. **Paper mode** — seed from one or more DOIs or PDFs.
