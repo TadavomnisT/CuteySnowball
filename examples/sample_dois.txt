@@ -1,0 +1,19 @@
+# Sample seed DOIs for testing CuteySnowball in paper mode.
+# Paste one per line into the "DOIs / titles" box.
+# These are well-cited, well-connected SE / ML papers — good for exercising
+# both forward and backward snowballing.
+
+# Wohlin 2014 — snowballing guidelines (the canonical citation for this tool's method)
+10.1145/2601248.2601268
+
+# Kitchenham 2004 — SLR procedures
+10.1145/2568225.2568315
+
+# Petersen 2008 — systematic mapping studies
+10.14236/ewic/EASE2008.8
+
+# A high-citation ML paper (exercises the forward flood + per-round cap)
+10.1145/3065386
+
+# Code-smell detection (exercises keyword mode)
+10.1109/TSE.2019.2919738

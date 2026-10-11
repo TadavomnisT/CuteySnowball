@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="CuteySnowball — Forward & Backward Snowballing for Systematic Literature Reviews" />
+  <title>CuteySnowball — Snowballing for SLRs</title>
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
+        <circle cx="24" cy="24" r="22" fill="var(--snow)" stroke="var(--accent)" stroke-width="2"/>
+        <circle cx="16" cy="18" r="3" fill="var(--accent)"/>
+        <circle cx="30" cy="20" r="4" fill="var(--accent2)"/>
+        <circle cx="22" cy="30" r="3.5" fill="var(--accent3)"/>
+        <path d="M16 18 L30 20 L22 30 Z" fill="none" stroke="var(--ink)" stroke-width="1.4" opacity="0.55"/>
+      </svg>
+      <div class="brand-text">
+        <h1>CuteySnowball</h1>
+        <span class="tagline">Forward &amp; Backward Snowballing for SLRs &amp; SMS</span>
+      </div>
+    </div>
+    <nav class="topnav">
+      <button id="nav-new" class="btn primary" title="Start a new run (n)">+ New run</button>
+      <button id="nav-runs" class="btn ghost" title="Recent runs">Runs</button>
+      <button id="nav-compare" class="btn ghost" title="Compare two runs">⇄ Compare</button>
+      <button id="nav-settings" class="btn ghost" title="Settings">⚙</button>
+      <button id="nav-help" class="btn ghost" title="Help &amp; docs">?</button>
+      <button id="theme-toggle" class="btn ghost icon-only" title="Toggle dark mode" aria-label="Toggle theme">
+        <span id="theme-icon">🌙</span>
+      </button>
+      <button id="nav-burger" class="btn ghost icon-only hidden" title="Menu" aria-label="Menu">☰</button>
+    </nav>
+  </header>
+
+  <main id="app" class="container">
+
+    <!-- ===================== HOME / START ===================== -->
+    <section id="view-home" class="view active">
+      <div class="hero">
+        <h2>Snowball your literature review — cutely.</h2>
+        <p class="lead">
+          Pick a starting point and CuteySnowball will walk the citation graph
+          forwards <em>(who cites this?)</em> and backwards <em>(what does this cite?)</em>,
+          score every paper for relevance, and hand you a tidy, machine-readable corpus —
+          with a timeline graph you can actually read.
+        </p>
+      </div>
+
+      <div class="choice-grid">
+        <!-- OPTION 1 -->
+        <article class="choice-card" id="card-paper" tabindex="0" role="button">
+          <div class="choice-emoji">📄</div>
+          <h3>Start from paper(s)</h3>
+          <p>Drop one or more seed papers by DOI or PDF. Best when you already
+            know the cornerstone work of your topic.</p>
+          <span class="choice-hint">Forward + backward snowball from each seed →</span>
+        </article>
+        <!-- OPTION 2 -->
+        <article class="choice-card" id="card-keyword" tabindex="0" role="button">
+          <div class="choice-emoji">🔎</div>
+          <h3>Start from keywords</h3>
+          <p>Enter a title, a few keywords, or a research question. We search,
+            pick the most relevant hits as seeds, then snowball each.</p>
+          <span class="choice-hint">Search → rank → snowball →</span>
+        </article>
+      </div>
+
+      <!-- ===== Paper form ===== -->
+      <form id="form-paper" class="form hidden" autocomplete="off">
+        <h3>Seed papers</h3>
+        <p class="muted">One DOI per line, or upload PDF(s). Everything runs through
+          free scholarly APIs (OpenAlex, Semantic Scholar, Crossref, OpenCitations) —
+          your IP is never exposed to Google Scholar unless you opt in.</p>
+        <div class="form-row">
+          <label class="field grow">
+            <span>DOIs / titles</span>
+            <textarea id="paper-dois" rows="5"
+              placeholder="10.1145/2568225.2568315&#10;10.1109/TSE.2019.2919738&#10;An Empirical Study of ..."></textarea>
+          </label>
+          <label class="field uploader">
+            <span>…or drop PDFs</span>
+            <input type="file" id="paper-pdfs" accept="application/pdf" multiple />
+            <div class="dropzone" id="paper-dropzone">
+              <span class="dz-icon">⬆</span>
+              <span class="dz-text">Drop PDFs here or click to browse</span>
+            </div>
+          </label>
+        </div>
+        <details class="advanced">
+          <summary>Advanced options</summary>
+          <div class="form-row wrap">
+            <label class="field sm">
+              <span>Max iterations</span>
+              <input type="number" id="opt-max-iter" value="5" min="1" max="10" />
+            </label>
+            <label class="field sm">
+              <span>Min relevance (0–1)</span>
+              <input type="number" id="opt-min-rel" value="0.18" step="0.01" min="0" max="1" />
+            </label>
+            <label class="field sm">
+              <span>Per-round cap</span>
+              <input type="number" id="opt-per-round" value="60" min="5" max="200" />
+            </label>
+            <label class="field sm">
+              <span>Max total papers</span>
+              <input type="number" id="opt-max-total" value="500" min="20" max="2000" />
+            </label>
+          </div>
+          <div class="weights-grid" data-wg="paper">
+            <span class="wg-title">Relevance weights <em>(sum need not be 1; normalised)</em></span>
+            <label class="field sm"><span>TF-IDF</span><input type="range" class="wg" data-w="tfidf" min="0" max="1" step="0.05" value="0.45" /><output>0.45</output></label>
+            <label class="field sm"><span>Keyword</span><input type="range" class="wg" data-w="keyword" min="0" max="1" step="0.05" value="0.25" /><output>0.25</output></label>
+            <label class="field sm"><span>Recency</span><input type="range" class="wg" data-w="recency" min="0" max="1" step="0.05" value="0.15" /><output>0.15</output></label>
+            <label class="field sm"><span>Citations</span><input type="range" class="wg" data-w="citations" min="0" max="1" step="0.05" value="0.15" /><output>0.15</output></label>
+          </div>
+        </details>
+        <div class="form-actions">
+          <button type="button" class="btn ghost" data-back>← Back</button>
+          <button type="submit" class="btn primary">Start snowballing ▸</button>
+        </div>
+      </form>
+
+      <!-- ===== Keyword form ===== -->
+      <form id="form-keyword" class="form hidden" autocomplete="off">
+        <h3>Keywords / title / question</h3>
+        <p class="muted">We search OpenAlex + Semantic Scholar + Crossref, keep the
+          top relevant hits as seeds, then snowball each. Comma- or newline-separated.</p>
+        <label class="field grow">
+          <span>Query</span>
+          <textarea id="kw-input" rows="3"
+            placeholder="systematic literature review in software engineering&#10;machine learning, code smell detection"></textarea>
+        </label>
+        <details class="advanced">
+          <summary>Advanced options</summary>
+          <div class="form-row wrap">
+            <label class="field sm">
+              <span>Top-N seed papers</span>
+              <input type="number" id="opt-kw-topn" value="8" min="1" max="20" />
+            </label>
+            <label class="field sm">
+              <span>Max iterations</span>
+              <input type="number" id="opt-kw-max-iter" value="5" min="1" max="10" />
+            </label>
+            <label class="field sm">
+              <span>Min relevance</span>
+              <input type="number" id="opt-kw-min-rel" value="0.18" step="0.01" min="0" max="1" />
+            </label>
+            <label class="field sm">
+              <span>Per-round cap</span>
+              <input type="number" id="opt-kw-per-round" value="60" min="5" max="200" />
+            </label>
+          </div>
+          <div class="weights-grid" data-wg="keyword">
+            <span class="wg-title">Relevance weights <em>(sum need not be 1; normalised)</em></span>
+            <label class="field sm"><span>TF-IDF</span><input type="range" class="wg" data-w="tfidf" min="0" max="1" step="0.05" value="0.45" /><output>0.45</output></label>
+            <label class="field sm"><span>Keyword</span><input type="range" class="wg" data-w="keyword" min="0" max="1" step="0.05" value="0.25" /><output>0.25</output></label>
+            <label class="field sm"><span>Recency</span><input type="range" class="wg" data-w="recency" min="0" max="1" step="0.05" value="0.15" /><output>0.15</output></label>
+            <label class="field sm"><span>Citations</span><input type="range" class="wg" data-w="citations" min="0" max="1" step="0.05" value="0.15" /><output>0.15</output></label>
+          </div>
+        </details>
+        <div class="form-actions">
+          <button type="button" class="btn ghost" data-back>← Back</button>
+          <button type="submit" class="btn primary">Search &amp; snowball ▸</button>
+        </div>
+      </form>
+
+      <!-- ===== Sources status ===== -->
+      <section class="sources" id="sources-panel">
+        <h3>Data sources</h3>
+        <div id="sources-list" class="sources-list"><span class="muted">loading…</span></div>
+      </section>
+    </section>
+
+    <!-- ===================== SEARCH (option 2 picker) ===================== -->
+    <section id="view-search" class="view hidden">
+      <h2>Search results</h2>
+      <p class="muted">We searched across your enabled sources. Tick the papers you want
+        as <strong>seeds</strong>, then snowball them.</p>
+      <div class="form-row">
+        <input type="text" id="search-box" class="grow" placeholder="refine results…" />
+        <button id="search-requery" class="btn primary">New search</button>
+      </div>
+      <ul id="search-results" class="results-list"></ul>
+      <div class="form-actions sticky">
+        <button id="search-back" class="btn ghost">← Back</button>
+        <span id="search-count" class="muted">0 selected</span>
+        <button id="search-snowball" class="btn primary" disabled>Snowball selected ▸</button>
+      </div>
+    </section>
+
+    <!-- ===================== RUN (progress + results) ===================== -->
+    <section id="view-run" class="view hidden">
+      <!-- PRISMA-ish phase strip -->
+      <div class="prisma" id="prisma-strip">
+        <div class="phase" data-phase="identification">
+          <span class="phase-num" id="cnt-id">0</span>
+          <span class="phase-label">Identification</span>
+        </div>
+        <span class="arrow">→</span>
+        <div class="phase" data-phase="screening">
+          <span class="phase-num" id="cnt-sc">0</span>
+          <span class="phase-label">Screening</span>
+        </div>
+        <span class="arrow">→</span>
+        <div class="phase" data-phase="eligibility">
+          <span class="phase-num" id="cnt-el">0</span>
+          <span class="phase-label">Eligibility</span>
+        </div>
+        <span class="arrow">→</span>
+        <div class="phase" data-phase="included">
+          <span class="phase-num" id="cnt-in">0</span>
+          <span class="phase-label">Included</span>
+        </div>
+      </div>
+
+      <!-- progress log -->
+      <div id="run-progress" class="progress-log">
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+        <ul id="progress-feed" class="feed"></ul>
+        <div class="form-actions">
+          <button id="run-stop" class="btn danger">■ Stop</button>
+          <button id="run-resume" class="btn primary hidden">▶ Resume</button>
+        </div>
+      </div>
+
+      <!-- results (hidden until done) -->
+      <div id="run-results" class="hidden">
+        <div class="results-header">
+          <h2 id="results-title">Snowball corpus</h2>
+          <div class="results-actions">
+            <label class="field inline">
+              <span>Min relevance</span>
+              <input type="range" id="filter-rel" min="0" max="1" step="0.01" value="0" />
+              <output id="filter-rel-out">0.00</output>
+            </label>
+            <label class="field inline">
+              <span>Year from</span>
+              <input type="number" id="filter-year-from" placeholder="—" min="1900" max="2100" />
+            </label>
+            <label class="field inline">
+              <span>to</span>
+              <input type="number" id="filter-year-to" placeholder="—" min="1900" max="2100" />
+            </label>
+            <input type="search" id="filter-text" placeholder="filter title/author…" />
+            <label class="chk"><input type="checkbox" id="filter-seeds" checked /> Seeds</label>
+            <label class="chk"><input type="checkbox" id="filter-included" checked /> Included</label>
+            <label class="chk"><input type="checkbox" id="filter-excluded" /> Excluded</label>
+          </div>
+        </div>
+
+        <!-- tabs -->
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="graph" role="tab" title="g">🕸️ Graph</button>
+          <button class="tab" data-tab="ranked" role="tab" title="r">🏆 Ranked</button>
+          <button class="tab" data-tab="stats" role="tab" title="s">📊 Stats</button>
+          <button class="tab" data-tab="tree" role="tab" title="t">🌲 Hierarchy</button>
+          <button class="tab" data-tab="table" role="tab" title="b">📋 Table</button>
+          <span class="tabs-spacer"></span>
+          <button class="tab export" data-export="prisma" title="Download PRISMA flow diagram (SVG)">📊 PRISMA</button>
+          <button class="tab export" data-export="coins" title="Open COinS page for Zotero multi-import">📚 Zotero</button>
+          <button class="tab export" data-export="json" title="JSON (machine-readable, with graph)">JSON</button>
+          <button class="tab export" data-export="csv">CSV</button>
+          <button class="tab export" data-export="ris">RIS</button>
+          <button class="tab export" data-export="bibtex">BibTeX</button>
+        </div>
+
+        <!-- graph view -->
+        <div class="tab-panel active" id="panel-graph">
+          <div class="graph-toolbar">
+            <input type="search" id="graph-search" placeholder="highlight a paper…" class="graph-search" />
+            <button class="btn tiny ghost" id="graph-fit" title="fit to view">Fit</button>
+            <button class="btn tiny ghost" id="graph-relayout" title="recompute layout">Relayout</button>
+            <label class="chk"><input type="checkbox" id="graph-abstracts" /> Abstracts on hover</label>
+            <label class="chk"><input type="checkbox" id="graph-forward" checked /> Forward edges</label>
+            <label class="chk"><input type="checkbox" id="graph-backward" checked /> Backward edges</label>
+            <label class="chk"><input type="checkbox" id="graph-grid" checked /> Year gridlines</label>
+            <label class="chk"><input type="checkbox" id="graph-drag" /> Drag nodes</label>
+            <label class="chk"><input type="checkbox" id="graph-select" /> Box select</label>
+          </div>
+          <div class="year-brush" id="year-brush">
+            <span class="yb-label">Year range:</span>
+            <input type="number" id="year-from" placeholder="from" min="1900" max="2100" class="yb-input" />
+            <span class="yb-sep">—</span>
+            <input type="number" id="year-to" placeholder="to" min="1900" max="2100" class="yb-input" />
+            <button class="btn tiny ghost" id="year-brush-clear" title="clear year filter">✕</button>
+            <span class="yb-hint muted">filters the graph view</span>
+          </div>
+          <div id="graph-canvas" class="graph-canvas">
+            <svg id="graph-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div id="graph-tooltip" class="tooltip hidden"></div>
+          </div>
+          <div class="legend">
+            <span class="legend-item"><span class="dot seed"></span> Seed paper</span>
+            <span class="legend-item"><span class="dot inc"></span> Included</span>
+            <span class="legend-item"><span class="dot exc"></span> Excluded (low relevance)</span>
+            <span class="legend-item"><span class="edge forward"></span> Forward (cites →)</span>
+            <span class="legend-item"><span class="edge backward"></span> Backward (← cited)</span>
+          </div>
+        </div>
+
+        <!-- ranked view -->
+        <div class="tab-panel hidden" id="panel-ranked">
+          <div class="ranked-toolbar">
+            <label class="chk"><input type="checkbox" id="ranked-abstracts" /> Show abstracts</label>
+            <span class="muted" id="ranked-count">0 papers</span>
+          </div>
+          <ol id="ranked-list" class="ranked-list"></ol>
+        </div>
+
+        <!-- stats view -->
+        <div class="tab-panel hidden" id="panel-stats">
+          <div id="stats-grid" class="stats-grid"></div>
+        </div>
+
+        <!-- hierarchy tree -->
+        <div class="tab-panel hidden" id="panel-tree">
+          <ul id="tree-list" class="tree"></ul>
+        </div>
+
+        <!-- table view -->
+        <div class="tab-panel hidden" id="panel-table">
+          <div class="bulk-bar">
+            <span class="muted" id="bulk-count">0 selected</span>
+            <button class="btn tiny ghost" id="bulk-select-all">Select all</button>
+            <button class="btn tiny ghost" id="bulk-clear">Clear</button>
+            <span class="bulk-spacer"></span>
+            <label class="muted" style="font-size:0.8rem">Export selected as:</label>
+            <button class="btn tiny primary" data-bulk-fmt="ris">RIS</button>
+            <button class="btn tiny ghost" data-bulk-fmt="csv">CSV</button>
+            <button class="btn tiny ghost" data-bulk-fmt="bibtex">BibTeX</button>
+            <button class="btn tiny ghost" data-bulk-fmt="json">JSON</button>
+          </div>
+          <div class="table-wrap">
+            <table id="paper-table">
+              <thead>
+                <tr>
+                  <th><input type="checkbox" id="select-all-chk" title="select all" /></th>
+                  <th>#</th><th>Title</th><th>Authors</th><th>Year</th>
+                  <th>Cites</th><th>Rel.</th><th>Depth</th><th>Sources</th><th>DOI</th>
+                </tr>
+              </thead>
+              <tbody id="paper-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SETTINGS ===================== -->
+    <section id="view-settings" class="view hidden">
+      <h2>Settings</h2>
+      <p class="muted">Runtime overrides for the snowball engine. Changes apply to new runs.
+        These mirror the environment variables documented in <code>config.py</code>.</p>
+      <form id="settings-form" class="form">
+        <div class="form-row wrap">
+          <label class="field sm">
+            <span>Polite email (mailto)</span>
+            <input type="email" id="set-mailto" placeholder="you@example.org" />
+          </label>
+          <label class="field sm">
+            <span>Min relevance</span>
+            <input type="number" id="set-min-rel" step="0.01" min="0" max="1" />
+          </label>
+          <label class="field sm">
+            <span>Max iterations</span>
+            <input type="number" id="set-max-iter" min="1" max="10" />
+          </label>
+          <label class="field sm">
+            <span>Per-round cap</span>
+            <input type="number" id="set-per-round" min="5" max="200" />
+          </label>
+        </div>
+        <h3>Data sources</h3>
+        <div id="settings-sources" class="sources-list"></div>
+        <h3>DOI cache</h3>
+        <div id="cache-info" class="muted">loading…</div>
+        <button type="button" class="btn danger tiny" id="cache-clear">Clear cache</button>
+        <div class="form-actions">
+          <button type="submit" class="btn primary">Save settings</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ===================== PAPER DETAIL PANEL ===================== -->
+    <aside id="detail-panel" class="detail-panel hidden" aria-hidden="true">
+      <div class="detail-backdrop" id="detail-backdrop"></div>
+      <div class="detail-card" role="dialog" aria-label="Paper details">
+        <button class="detail-close" id="detail-close" title="Close (Esc)" aria-label="Close">✕</button>
+        <div id="detail-body" class="detail-body"></div>
+      </div>
+    </aside>
+
+    <!-- ===================== RUNS LIST ===================== -->
+    <section id="view-runs" class="view hidden">
+      <h2>Recent runs</h2>
+      <ul id="runs-list" class="runs-list"></ul>
+    </section>
+
+    <!-- ===================== COMPARE ===================== -->
+    <section id="view-compare" class="view hidden">
+      <h2>Compare two runs</h2>
+      <p class="muted">Pick two runs to see what papers were added, removed, or had their relevance shift.</p>
+      <div class="compare-picker form-row">
+        <label class="field grow"><span>Run A</span><select id="compare-a"></select></label>
+        <span class="vs">⇄</span>
+        <label class="field grow"><span>Run B</span><select id="compare-b"></select></label>
+        <button id="compare-go" class="btn primary">Compare ▸</button>
+      </div>
+      <div id="compare-results" class="compare-results hidden">
+        <div class="compare-summary" id="compare-summary"></div>
+        <div class="compare-actions">
+          <button class="btn tiny ghost" id="cmp-export-csv">⬇ Diff as CSV</button>
+          <button class="btn tiny ghost" id="cmp-export-json">⬇ Diff as JSON</button>
+        </div>
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-ctab="only_a" role="tab">Only in A</button>
+          <button class="tab" data-ctab="only_b" role="tab">Only in B</button>
+          <button class="tab" data-ctab="shifted" role="tab">Relevance shifts</button>
+        </div>
+        <div class="tab-panel active" id="cpanel-only_a"><ol id="compare-only_a" class="ranked-list"></ol></div>
+        <div class="tab-panel hidden" id="cpanel-only_b"><ol id="compare-only_b" class="ranked-list"></ol></div>
+        <div class="tab-panel hidden" id="cpanel-shifted"><ul id="compare-shifted" class="shifted-list"></ul></div>
+      </div>
+    </section>
+
+    <!-- ===================== HELP ===================== -->
+    <section id="view-help" class="view hidden">
+      <h2>How CuteySnowball works</h2>
+      <div class="prose">
+        <h3>1. Pick a starting point</h3>
+        <p>You either give it seed papers (DOIs or PDFs) or a keyword query. In keyword mode,
+          we search OpenAlex + Semantic Scholar + Crossref, keep the most relevant hits as
+          seeds, then snowball each.</p>
+        <h3>2. Snowball (bi-directional, Wohlin 2014)</h3>
+        <p>For every paper in the queue, we ask every enabled source for:
+          <strong>backward</strong> = the references the paper cites, and
+          <strong>forward</strong> = the papers that cite it. New hits are merged into the
+          corpus (richer fields win), scored for relevance, and — if a round overflows —
+          only the top-N most relevant survive.</p>
+        <h3>3. Relevance score</h3>
+        <p><code>0.45·TF-IDF + 0.25·keyword-Jaccard + 0.15·recency + 0.15·log(citations)</code>.
+          Pure-Python, no external ML dependency.</p>
+        <h3>4. Stopping</h3>
+        <p>Run ends when the snowball <em>saturates</em> (≤1 new eligible paper in a round),
+          hits <code>max_iterations</code>, or reaches <code>max_total_papers</code>.</p>
+        <h3>5. Export</h3>
+        <p>JSON (with full graph + dependencies), CSV, RIS, BibTeX. Filter by relevance/year/text first.</p>
+        <h3>Anti-block by default</h3>
+        <p>CuteySnowball ships with the four free academic APIs (OpenAlex, Semantic Scholar,
+          Crossref, OpenCitations) which never block your IP. Google Scholar enrichment
+          (scholarly + scrape-google-scholar-py) is <strong>opt-in</strong> via env flags and
+          uses rotating free proxies + 8-14s per-host floors.</p>
+        <h3>Acknowledgements</h3>
+        <p>Built on the shoulders of:
+          <a href="https://github.com/abequet/BackwardForwardSnowballing" target="_blank" rel="noopener">BackwardForwardSnowballing</a>,
+          <a href="https://github.com/dimitryzub/scrape-google-scholar-py" target="_blank" rel="noopener">scrape-google-scholar-py</a>,
+          <a href="https://github.com/scholarly-python-package/scholarly" target="_blank" rel="noopener">scholarly</a>.
+          Methodology: Kitchenham 2004, Petersen 2008, Wohlin 2014, PRISMA 2020. See <code>docs/</code>.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <span>CuteySnowball v0.8 · GPL-3.0 · <a href="https://github.com/TadavomnisT/CuteySnowball" target="_blank" rel="noopener">GitHub</a></span>
+      <span class="muted">Built with free scholarly APIs. No IP-exposing scraping by default. · Shortcuts: <kbd>?</kbd> help · <kbd>g</kbd>/<kbd>r</kbd>/<kbd>s</kbd>/<kbd>t</kbd>/<kbd>b</kbd> tabs · <kbd>/</kbd> filter · <kbd>n</kbd> new · <kbd>c</kbd> compare · <kbd>Esc</kbd> close</span>
+    </div>
+  </footer>
+
+  <!-- toast -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <!-- keyboard shortcuts cheatsheet -->
+  <div id="cheatsheet" class="cheatsheet hidden" role="dialog" aria-label="Keyboard shortcuts">
+    <div class="cheat-backdrop" id="cheat-backdrop"></div>
+    <div class="cheat-card">
+      <button class="detail-close" id="cheat-close" title="Close (Esc)">✕</button>
+      <h2>Keyboard shortcuts</h2>
+      <div class="cheat-grid">
+        <div class="cheat-section"><h3>Navigation</h3>
+          <div class="cheat-row"><kbd>g</kbd><span>Graph tab</span></div>
+          <div class="cheat-row"><kbd>r</kbd><span>Ranked tab</span></div>
+          <div class="cheat-row"><kbd>s</kbd><span>Stats tab</span></div>
+          <div class="cheat-row"><kbd>t</kbd><span>Tree tab</span></div>
+          <div class="cheat-row"><kbd>b</kbd><span>Table tab</span></div>
+          <div class="cheat-row"><kbd>n</kbd><span>New run</span></div>
+          <div class="cheat-row"><kbd>c</kbd><span>Compare view</span></div>
+        </div>
+        <div class="cheat-section"><h3>List navigation</h3>
+          <div class="cheat-row"><kbd>↓</kbd>/<kbd>j</kbd><span>Next paper</span></div>
+          <div class="cheat-row"><kbd>↑</kbd>/<kbd>k</kbd><span>Previous paper</span></div>
+          <div class="cheat-row"><kbd>Enter</kbd><span>Open paper detail</span></div>
+          <div class="cheat-row"><kbd>/</kbd><span>Focus filter box</span></div>
+        </div>
+        <div class="cheat-section"><h3>Other</h3>
+          <div class="cheat-row"><kbd>Esc</kbd><span>Close panel / cheatsheet</span></div>
+          <div class="cheat-row"><kbd>?</kbd><span>Toggle this cheatsheet</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- scripts: order matters -->
+  <script src="/static/js/utils.js"></script>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/graph.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

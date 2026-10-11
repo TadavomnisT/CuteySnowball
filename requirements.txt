@@ -1,0 +1,15 @@
+# CuteySnowball — Python dependencies
+# Core (required): lightweight, pure-python-friendly where possible.
+Flask>=3.0
+requests>=2.31
+beautifulsoup4>=4.12
+pypdf>=4.0
+# Optional Google-Scholar enrichment (heavier; needed for tools 2 & 3 integration).
+# These are listed as optional extras; CuteySnowball degrades gracefully if absent.
+scholarly>=1.7
+selenium>=4.15
+# Only needed if selenium path is used (auto-installs chromedriver).
+webdriver-manager>=4.0
+# selectolax is used by the ported scrape-google-scholar parser (fast HTML parsing).
+# Falls back to BeautifulSoup if not installed.
+selectolax>=0.3
