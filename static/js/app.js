@@ -860,7 +860,7 @@
     // card 5: source coverage
     const bySrc = {};
     papers.forEach((p) => (p.sources || []).forEach((s) => { bySrc[s] = (bySrc[s] || 0) + 1; }));
-    const srcColors = { openalex: "#d97757", semantic_scholar: "#6b8e7f", crossref: "#c89b3c", opencitations: "#8a857c", scholarly: "#c0504d", scholar_scrape: "#7b6cb0", pdf: "#5c5a55" };
+    const srcColors = { openalex: "#8b5cf6", semantic_scholar: "#a78bfa", crossref: "#c084fc", opencitations: "#9a8ab8", scholarly: "#e53e8a", scholar_scrape: "#7c3aed", pdf: "#6d5bb8" };
     const c5 = el("div", { class: "stat-card" });
     c5.appendChild(el("h4", {}, "Source coverage"));
     if (Object.keys(bySrc).length) {

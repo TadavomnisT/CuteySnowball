@@ -24,9 +24,9 @@
   function show(node) { node && node.classList.remove("hidden"); }
   function hide(node) { node && node.classList.add("hidden"); }
   function swap(viewId) {
-    $$(".view").forEach((v) => v.classList.remove("active"));
+    $$(".view").forEach((v) => { v.classList.remove("active"); v.classList.add("hidden"); });
     const v = $("#" + viewId);
-    if (v) v.classList.add("active");
+    if (v) { v.classList.remove("hidden"); v.classList.add("active"); }
   }
 
   let toastTimer;

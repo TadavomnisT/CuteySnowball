@@ -217,12 +217,12 @@ def prisma_svg(run: Run, width: int = 900) -> str:
     y_top = 60
     # theme-ish colours (read from CSS at render time would need a context;
     # use fixed but tasteful values that work on light + dark)
-    fill = "#faf8f4"
-    stroke = "#cfc7b8"
-    accent = "#d97757"
-    ink = "#2b2a27"
-    muted = "#8a8782"
-    green = "#6b8e7f"
+    fill = "#f5f0fa"
+    stroke = "#c9b8e6"
+    accent = "#8b5cf6"
+    ink = "#2d1b4e"
+    muted = "#9a8ab8"
+    green = "#a78bfa"
     positions = []
     for i in range(4):
         x = gap + i * (box_w + gap)

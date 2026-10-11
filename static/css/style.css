@@ -1,29 +1,29 @@
 /* ============================================================
    CuteySnowball — pure CSS, no framework, no CDN.
-   Light + dark themes via [data-theme]. Sticky footer.
+   Cute purple theme. Light + dark via [data-theme]. Sticky footer.
    ============================================================ */
 
 :root {
-  --bg: #f7f6f3;
-  --bg-soft: #efece6;
+  --bg: #f8f5fc;
+  --bg-soft: #ede7f6;
   --surface: #ffffff;
-  --surface-2: #faf8f4;
-  --ink: #2b2a27;
-  --ink-soft: #5c5a55;
-  --muted: #8a8782;
-  --line: #e3ded5;
-  --line-strong: #cfc7b8;
-  --accent: #d97757;          /* warm coral */
-  --accent-soft: #f6e6df;
-  --accent2: #6b8e7f;          /* sage */
-  --accent2-soft: #dde8e1;
-  --accent3: #c89b3c;          /* honey */
-  --accent3-soft: #f5e9cf;
+  --surface-2: #f5f0fa;
+  --ink: #2d1b4e;
+  --ink-soft: #5e4b8a;
+  --muted: #9a8ab8;
+  --line: #e1d5f0;
+  --line-strong: #c9b8e6;
+  --accent: #8b5cf6;            /* vibrant purple */
+  --accent-soft: #ede5fe;
+  --accent2: #a78bfa;           /* light purple */
+  --accent2-soft: #f0e9ff;
+  --accent3: #c084fc;           /* pink-purple */
+  --accent3-soft: #f5e8ff;
   --snow: #ffffff;
-  --danger: #c0504d;
-  --danger-soft: #f4d9d8;
-  --shadow: 0 2px 10px rgba(43, 42, 39, 0.06), 0 1px 3px rgba(43,42,39,0.04);
-  --shadow-lg: 0 10px 30px rgba(43, 42, 39, 0.12), 0 3px 8px rgba(43,42,39,0.06);
+  --danger: #e53e8a;            /* pink-red */
+  --danger-soft: #fce0ef;
+  --shadow: 0 2px 10px rgba(139, 92, 246, 0.08), 0 1px 3px rgba(139,92,246,0.05);
+  --shadow-lg: 0 10px 30px rgba(139, 92, 246, 0.15), 0 3px 8px rgba(139,92,246,0.08);
   --radius: 12px;
   --radius-sm: 8px;
   --radius-lg: 18px;
@@ -34,24 +34,24 @@
 }
 
 [data-theme="dark"] {
-  --bg: #1c1b1a;
-  --bg-soft: #232220;
-  --surface: #2a2826;
-  --surface-2: #312e2b;
-  --ink: #f3eee6;
-  --ink-soft: #c4bfb5;
-  --muted: #8a857c;
-  --line: #3a3733;
-  --line-strong: #4a4540;
-  --accent: #e8895f;
-  --accent-soft: #4a3328;
-  --accent2: #88a897;
-  --accent2-soft: #2e3a32;
-  --accent3: #d8aa50;
-  --accent3-soft: #42331a;
-  --snow: #2a2826;
-  --shadow: 0 2px 12px rgba(0,0,0,0.4);
-  --shadow-lg: 0 12px 36px rgba(0,0,0,0.5);
+  --bg: #1a0f2e;
+  --bg-soft: #241440;
+  --surface: #2a1a4a;
+  --surface-2: #322050;
+  --ink: #f0e6ff;
+  --ink-soft: #c9b8e6;
+  --muted: #8a7aa8;
+  --line: #3d2a5e;
+  --line-strong: #4e3870;
+  --accent: #a78bfa;
+  --accent-soft: #3a2a5e;
+  --accent2: #c4b5fd;
+  --accent2-soft: #2e2050;
+  --accent3: #d8b4fe;
+  --accent3-soft: #3a2a4e;
+  --snow: #2a1a4a;
+  --shadow: 0 2px 12px rgba(0,0,0,0.5);
+  --shadow-lg: 0 12px 36px rgba(0,0,0,0.6);
 }
 
 * { box-sizing: border-box; }
