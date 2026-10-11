@@ -205,6 +205,7 @@ class Run:
         seeds = sum(1 for p in self.papers.values() if p.seed)
         included = sum(1 for p in self.papers.values() if p.included)
         excluded = len(self.papers) - included
+        manually_excluded = sum(1 for p in self.papers.values() if not p.included and p.excluded_reason == "manual_exclusion")
         forward_edges = sum(1 for e in self.edges if e["direction"] == "forward")
         backward_edges = sum(1 for e in self.edges if e["direction"] == "backward")
         years = [p.year for p in self.papers.values() if p.year]
@@ -213,6 +214,7 @@ class Run:
             "seeds": seeds,
             "included": included,
             "excluded": excluded,
+            "manually_excluded": manually_excluded,
             "forward_edges": forward_edges,
             "backward_edges": backward_edges,
             "year_min": min(years) if years else None,

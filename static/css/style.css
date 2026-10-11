@@ -1454,3 +1454,114 @@ kbd {
 .runs-filter .rf-chip.active {
   background: var(--accent2); color: white; border-color: var(--accent2);
 }
+
+/* ---- graph layout selector ---- */
+.graph-layout-select {
+  font: inherit; font-size: 0.78rem; padding: 4px 8px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: var(--surface-2); color: var(--ink); cursor: pointer;
+}
+.graph-layout-select:focus { outline: none; border-color: var(--accent); }
+
+/* ---- run search bar ---- */
+.run-search-bar {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+}
+.run-search-bar input {
+  flex: 1; font: inherit; font-size: 0.86rem; padding: 7px 11px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: var(--surface-2); color: var(--ink);
+}
+.run-search-bar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.run-search-bar .rs-count { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+.run-search-results {
+  max-height: 400px; overflow-y: auto; margin-bottom: 14px;
+}
+.run-search-results li {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 6px;
+  cursor: pointer; transition: border-color 0.15s;
+}
+.run-search-results li:hover { border-color: var(--accent); }
+.run-search-results .rsr-title { font-weight: 600; margin-bottom: 2px; }
+.run-search-results .rsr-meta { font-size: 0.78rem; color: var(--muted); }
+.run-search-results .rsr-run { font-size: 0.72rem; color: var(--accent2); }
+
+/* ---- paper annotations (in detail panel) ---- */
+.d-annotation { margin: 12px 0; }
+.d-annotation .ann-btn {
+  font-size: 0.8rem; padding: 5px 11px;
+  background: var(--accent2-soft); color: var(--accent2);
+  border: 1px solid var(--accent2); border-radius: var(--radius-sm);
+  cursor: pointer; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.d-annotation .ann-btn:hover { background: var(--accent2); color: white; }
+.d-annotation textarea {
+  width: 100%; min-height: 60px; margin-top: 6px;
+  font: inherit; font-size: 0.84rem; padding: 8px 10px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: var(--surface-2); color: var(--ink); resize: vertical;
+}
+.d-annotation textarea:focus { outline: none; border-color: var(--accent2); box-shadow: 0 0 0 2px var(--accent2-soft); }
+.d-annotation .ann-note {
+  margin-top: 6px; padding: 8px 12px;
+  background: var(--accent2-soft); border-left: 3px solid var(--accent2);
+  border-radius: var(--radius-sm); font-size: 0.84rem; color: var(--ink-soft);
+  line-height: 1.5;
+}
+.d-annotation .ann-note::before { content: "📝 "; }
+.d-annotation .ann-actions { margin-top: 4px; display: flex; gap: 6px; }
+.d-annotation .ann-actions button { font-size: 0.74rem; padding: 3px 8px; }
+
+/* ---- timeline chart (in stats) ---- */
+.stat-timeline {
+  display: flex; align-items: flex-end; gap: 8px; height: 100px;
+  padding: 8px 0; position: relative;
+}
+.stat-timeline .tl-bar {
+  flex: 1; min-width: 20px; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end; height: 100%;
+}
+.stat-timeline .tl-bar .bar {
+  width: 100%; max-width: 40px;
+  background: linear-gradient(180deg, var(--accent), var(--accent2));
+  border-radius: 3px 3px 0 0; min-height: 2px;
+  transition: height 0.4s ease; position: relative;
+}
+.stat-timeline .tl-bar .bar:hover { filter: brightness(1.15); }
+.stat-timeline .tl-bar .lbl { font-size: 0.68rem; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+.stat-timeline .tl-bar .cnt { font-size: 0.68rem; color: var(--accent); font-weight: 600; margin-bottom: 2px; }
+.stat-timeline .tl-cumulative {
+  position: absolute; top: 0; right: 0;
+  font-size: 0.72rem; color: var(--muted);
+}
+
+/* ---- inclusion/exclusion toggle (in detail panel) ---- */
+.d-toggle { margin: 10px 0; }
+.d-toggle .tg-btn {
+  font-size: 0.8rem; padding: 5px 12px; border-radius: var(--radius-sm);
+  cursor: pointer; font-weight: 600; border: 1px solid;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.d-toggle .tg-btn.included {
+  background: var(--accent2-soft); color: var(--accent2); border-color: var(--accent2);
+}
+.d-toggle .tg-btn.included:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+.d-toggle .tg-btn.excluded {
+  background: var(--danger-soft); color: var(--danger); border-color: var(--danger);
+}
+.d-toggle .tg-btn.excluded:hover { background: var(--accent2-soft); color: var(--accent2); border-color: var(--accent2); }
+
+/* ---- node size selector ---- */
+.graph-size-select {
+  font: inherit; font-size: 0.78rem; padding: 4px 8px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: var(--surface-2); color: var(--ink); cursor: pointer;
+}
+.graph-size-select:focus { outline: none; border-color: var(--accent); }
+
+/* ---- annotation indicator on ranked items ---- */
+.ranked-list li.has-annotation::after {
+  content: "📝"; font-size: 0.7rem; margin-left: 4px; opacity: 0.7;
+}

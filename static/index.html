@@ -109,6 +109,14 @@
               <span>Max total papers</span>
               <input type="number" id="opt-max-total" value="500" min="20" max="2000" />
             </label>
+            <label class="field sm">
+              <span>Direction</span>
+              <select id="opt-direction">
+                <option value="both" selected>↕ Both</option>
+                <option value="forward">→ Forward only</option>
+                <option value="backward">← Backward only</option>
+              </select>
+            </label>
           </div>
           <div class="weights-grid" data-wg="paper">
             <span class="wg-title">Relevance weights <em>(sum need not be 1; normalised)</em></span>
@@ -152,6 +160,14 @@
             <label class="field sm">
               <span>Per-round cap</span>
               <input type="number" id="opt-kw-per-round" value="60" min="5" max="200" />
+            </label>
+            <label class="field sm">
+              <span>Direction</span>
+              <select id="opt-kw-direction">
+                <option value="both" selected>↕ Both</option>
+                <option value="forward">→ Forward only</option>
+                <option value="backward">← Backward only</option>
+              </select>
             </label>
           </div>
           <div class="weights-grid" data-wg="keyword">
@@ -272,14 +288,27 @@
         <div class="tab-panel active" id="panel-graph">
           <div class="graph-toolbar">
             <input type="search" id="graph-search" placeholder="highlight a paper…" class="graph-search" />
+            <select id="graph-layout" class="graph-layout-select" title="layout mode">
+              <option value="timeline" selected>📅 Timeline</option>
+              <option value="force">🌀 Force-directed</option>
+            </select>
+            <select id="graph-size" class="graph-size-select" title="node sizing">
+              <option value="citations" selected>Citations</option>
+              <option value="relevance">Relevance</option>
+              <option value="degree">Degree</option>
+              <option value="fixed">Fixed</option>
+            </select>
             <button class="btn tiny ghost" id="graph-fit" title="fit to view">Fit</button>
             <button class="btn tiny ghost" id="graph-relayout" title="recompute layout">Relayout</button>
+            <button class="btn tiny ghost" id="graph-export-svg" title="export graph as SVG">⬇ SVG</button>
+            <button class="btn tiny ghost" id="graph-export-png" title="export graph as PNG">⬇ PNG</button>
             <label class="chk"><input type="checkbox" id="graph-abstracts" /> Abstracts on hover</label>
             <label class="chk"><input type="checkbox" id="graph-forward" checked /> Forward edges</label>
             <label class="chk"><input type="checkbox" id="graph-backward" checked /> Backward edges</label>
             <label class="chk"><input type="checkbox" id="graph-grid" checked /> Year gridlines</label>
             <label class="chk"><input type="checkbox" id="graph-drag" /> Drag nodes</label>
             <label class="chk"><input type="checkbox" id="graph-select" /> Box select</label>
+            <label class="chk"><input type="checkbox" id="graph-straight" /> Straight edges</label>
           </div>
           <div class="year-brush" id="year-brush">
             <span class="yb-label">Year range:</span>
@@ -467,7 +496,7 @@
 
   <footer class="footer">
     <div class="footer-inner">
-      <span>CuteySnowball v0.8 · GPL-3.0 · <a href="https://github.com/TadavomnisT/CuteySnowball" target="_blank" rel="noopener">GitHub</a></span>
+      <span>CuteySnowball v1.1 · GPL-3.0 · <a href="https://github.com/TadavomnisT/CuteySnowball" target="_blank" rel="noopener">GitHub</a></span>
       <span class="muted">Built with free scholarly APIs. No IP-exposing scraping by default. · Shortcuts: <kbd>?</kbd> help · <kbd>g</kbd>/<kbd>r</kbd>/<kbd>s</kbd>/<kbd>t</kbd>/<kbd>b</kbd> tabs · <kbd>/</kbd> filter · <kbd>n</kbd> new · <kbd>c</kbd> compare · <kbd>Esc</kbd> close</span>
     </div>
   </footer>

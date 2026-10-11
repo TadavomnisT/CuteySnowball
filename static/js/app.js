@@ -68,6 +68,16 @@
     // graph options
     $("#graph-fit").addEventListener("click", () => window.CSGraph.fit());
     $("#graph-relayout").addEventListener("click", () => window.CSGraph.relayout());
+    const gl = $("#graph-layout");
+    if (gl) gl.addEventListener("change", (e) => window.CSGraph.setLayout(e.target.value));
+    const ges = $("#graph-export-svg");
+    if (ges) ges.addEventListener("click", () => exportGraphSVG());
+    const gep = $("#graph-export-png");
+    if (gep) gep.addEventListener("click", () => exportGraphPNG());
+    const gs2 = $("#graph-straight");
+    if (gs2) gs2.addEventListener("change", (e) => window.CSGraph.setOption("straight", e.target.checked));
+    const gsz = $("#graph-size");
+    if (gsz) gsz.addEventListener("change", (e) => window.CSGraph.setOption("sizeMode", e.target.value));
     $("#graph-abstracts").addEventListener("change", (e) => window.CSGraph.setOption("abstracts", e.target.checked));
     $("#graph-forward").addEventListener("change", (e) => window.CSGraph.setOption("forward", e.target.checked));
     $("#graph-backward").addEventListener("change", (e) => window.CSGraph.setOption("backward", e.target.checked));
@@ -186,6 +196,21 @@
       }
       if (e.key === "n") { goHome(); }
       if (e.key === "c") { goCompare(); }
+      // 'a' to annotate the focused ranked paper
+      if (e.key === "a" && !document.getElementById("run-results").classList.contains("hidden")) {
+        const panelRanked = document.getElementById("panel-ranked");
+        if (panelRanked && panelRanked.classList.contains("active")) {
+          const focused = document.querySelector("#ranked-list li.focused");
+          if (focused) {
+            // open detail then click the annotation button
+            focused.click();
+            setTimeout(() => {
+              const annBtn = document.querySelector("#detail-body .ann-btn");
+              if (annBtn) annBtn.click();
+            }, 1500);
+          }
+        }
+      }
       // number keys 1-5: jump to top-N ranked papers (open detail)
       if (e.key >= "1" && e.key <= "5" && !document.getElementById("run-results").classList.contains("hidden")) {
         const panelRanked = document.getElementById("panel-ranked");
@@ -446,6 +471,7 @@
       per_round_cap: +($("#" + (prefix === "paper" ? "opt-per-round" : "opt-kw-per-round")).value),
       max_total_papers: +($("#opt-max-total").value),
       keyword_top_n: prefix === "keyword" ? +$("#opt-kw-topn").value : 8,
+      direction: $("#" + (prefix === "paper" ? "opt-direction" : "opt-kw-direction")).value || "both",
     };
     // collect relevance weights from the matching weights-grid
     const wg = document.querySelector(`.weights-grid[data-wg="${prefix}"]`);
@@ -513,8 +539,7 @@
       if (loaded) return;
       try {
         const st = await api.getJSON(`/api/run/${runId}/stats`);
-        if (st && st.stats) { /* stats nested? no, stats is top-level fields */ }
-        if (st && st.status === "done" || st && st.status === "error") {
+        if (st && (st.status === "done" || st.status === "error")) {
           if (loaded) return;
           loaded = true;
           addFeed("done", `Run ${st.status}. Loading results…`);
@@ -930,6 +955,42 @@
       c8.appendChild(el("div", { class: "stat-empty" }, "no round data"));
     }
     grid.appendChild(c8);
+
+    // card 9: corpus growth timeline (async)
+    if (S.runId) {
+      const c9 = el("div", { class: "stat-card" });
+      c9.appendChild(el("h4", {}, "Corpus growth timeline"));
+      c9.appendChild(el("div", { class: "muted", style: "font-size:0.82rem" }, "loading…"));
+      grid.appendChild(c9);
+      // fetch timeline data
+      api.getJSON(`/api/run/${S.runId}/timeline`).then((d) => {
+        c9.innerHTML = "";
+        c9.appendChild(el("h4", {}, "Corpus growth timeline"));
+        if (!d.papers || !d.papers.length) {
+          c9.appendChild(el("div", { class: "stat-empty" }, "no timeline data"));
+          return;
+        }
+        const maxNew = Math.max(...d.papers.map((t) => t.new));
+        const tl = el("div", { class: "stat-timeline" });
+        d.papers.forEach((t) => {
+          const bar = el("div", { class: "tl-bar", title: `Round ${t.round}: +${t.new} papers(s), total: ${t.cumulative}` });
+          bar.appendChild(el("div", { class: "cnt" }, String(t.new)));
+          const b = el("div", { class: "bar" });
+          b.style.height = Math.round((t.new / maxNew) * 80) + "%";
+          bar.appendChild(b);
+          bar.appendChild(el("div", { class: "lbl" }, t.round === 0 ? "seed" : "r" + t.round));
+          tl.appendChild(bar);
+        });
+        c9.appendChild(tl);
+        if (d.papers.length) {
+          c9.appendChild(el("div", { class: "muted", style: "font-size:0.72rem;margin-top:4px" }, `Final: ${d.papers[d.papers.length - 1].cumulative} papers over ${d.total_rounds} rounds`));
+        }
+      }).catch(() => {
+        c9.innerHTML = "";
+        c9.appendChild(el("h4", {}, "Corpus growth timeline"));
+        c9.appendChild(el("div", { class: "stat-empty" }, "could not load timeline"));
+      });
+    }
   }
 
   // ============================================================
@@ -981,6 +1042,11 @@
     es.onerror = () => { try { es.close(); } catch (_) {} status.textContent = "Connection lost."; };
   }
 
+  function encodeKey(key) {
+    // encode for URL path but keep / (DOIs contain /)
+    return encodeURIComponent(key).replace(/%2F/g, "/");
+  }
+
   // ============================================================
   // detail panel
   // ============================================================
@@ -997,10 +1063,43 @@
     body.appendChild(buildDetailHead(paper));
     body.appendChild(buildDetailActions(paper));
     body.appendChild(buildDetailRel(paper));
+    // annotation section (async load + edit)
+    const annSec = el("div", { class: "d-section d-annotation" });
+    body.appendChild(annSec);
+    if (S.runId) {
+      try {
+        const keyEnc = encodeKey(paper.key);
+        const a = await api.getJSON(`/api/run/${S.runId}/annotation/${keyEnc}`);
+        renderAnnotation(annSec, paper, a.note);
+      } catch (e) {
+        renderAnnotation(annSec, paper, null);
+      }
+    } else {
+      renderAnnotation(annSec, paper, null);
+    }
+    let absDiv = null;
+    // inclusion/exclusion toggle
+    const toggleSec = el("div", { class: "d-section d-toggle" });
+    const tgBtn = el("button", { class: "tg-btn " + (paper.included ? "included" : "excluded") },
+      paper.included ? "✓ Included (click to exclude)" : "✗ Excluded (click to include)");
+    tgBtn.addEventListener("click", async () => {
+      try {
+        const keyEnc = encodeKey(paper.key);
+        const r = await api.postJSON(`/api/run/${S.runId}/toggle/${keyEnc}`, {});
+        if (r.ok) {
+          paper.included = r.included;
+          tgBtn.className = "tg-btn " + (r.included ? "included" : "excluded");
+          tgBtn.textContent = r.included ? "✓ Included (click to exclude)" : "✗ Excluded (click to include)";
+          toast(r.included ? "Paper included." : "Paper excluded.");
+        }
+      } catch (e) { toast("Toggle failed: " + e.message); }
+    });
+    toggleSec.appendChild(tgBtn);
+    body.appendChild(toggleSec);
     if (paper.abstract) {
       const sec = el("div", { class: "d-section" });
       sec.appendChild(el("h5", {}, "Abstract"));
-      const absDiv = el("div", { class: "d-abstract" }, paper.abstract);
+      absDiv = el("div", { class: "d-abstract" }, paper.abstract);
       sec.appendChild(absDiv);
       body.appendChild(sec);
       // LLM summary button
@@ -1010,7 +1109,7 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="spin"></span> Summarising…';
         try {
-          const keyEnc = encodeURIComponent(paper.key);
+          const keyEnc = encodeKey(paper.key);
           const r = await api.postJSON(`/api/run/${S.runId}/summarise/${keyEnc}`, {});
           if (r.summary) {
             const result = el("div", { class: "sum-result" }, r.summary);
@@ -1039,7 +1138,7 @@
     body.appendChild(exSec);
     if (S.runId) {
       try {
-        const keyEnc = encodeURIComponent(paper.key);
+        const keyEnc = encodeKey(paper.key);
         const ex = await api.getJSON(`/api/run/${S.runId}/explain/${keyEnc}`);
         exSec.innerHTML = "";
         exSec.appendChild(el("h5", {}, "Relevance breakdown"));
@@ -1062,9 +1161,9 @@
           ex.overlap_keywords.forEach((k) => kw.appendChild(el("span", { class: "chip" }, k)));
           exSec.appendChild(kw);
         }
-        // highlight top TF-IDF tokens in the abstract
-        if (ex.top_tokens && ex.top_tokens.length && absDiv) {
-          highlightTokens(absDiv, ex.top_tokens);
+        // highlight top TF-IDF tokens in the abstract (if abstract exists)
+        if (ex.top_tokens && ex.top_tokens.length && typeof absDiv !== "undefined" && absDiv) {
+          try { highlightTokens(absDiv, ex.top_tokens); } catch (htErr) { /* non-fatal */ }
         }
       } catch (e) {
         exSec.innerHTML = "";
@@ -1079,7 +1178,7 @@
     // fetch neighbours
     if (S.runId) {
       try {
-        const keyEnc = encodeURIComponent(paper.key);
+        const keyEnc = encodeKey(paper.key);
         const d = await api.getJSON(`/api/run/${S.runId}/paper/${keyEnc}`);
         neighSec.innerHTML = "";
         neighSec.appendChild(el("h5", {}, "Citation graph"));
@@ -1110,6 +1209,59 @@
     }
   }
 
+  function renderAnnotation(container, paper, note) {
+    container.innerHTML = "";
+    container.appendChild(el("h5", {}, "Annotation"));
+    if (note) {
+      // show the note + edit/delete buttons
+      const noteEl = el("div", { class: "ann-note" }, note);
+      container.appendChild(noteEl);
+      const actions = el("div", { class: "ann-actions" });
+      const edit = el("button", { class: "btn ghost tiny" }, "✎ Edit");
+      edit.addEventListener("click", () => renderAnnotationEditor(container, paper, note));
+      const del = el("button", { class: "btn danger tiny" }, "✕ Delete");
+      del.addEventListener("click", async () => {
+        try {
+          await api.postJSON(`/api/run/${S.runId}/annotation/${encodeKey(paper.key)}`, { note: "" });
+          renderAnnotation(container, paper, null);
+          toast("Annotation deleted.");
+        } catch (e) { toast("Delete failed: " + e.message); }
+      });
+      actions.appendChild(edit);
+      actions.appendChild(del);
+      container.appendChild(actions);
+    } else {
+      // show an "add note" button
+      const btn = el("button", { class: "ann-btn" }, "📝 Add note");
+      btn.addEventListener("click", () => renderAnnotationEditor(container, paper, ""));
+      container.appendChild(btn);
+    }
+  }
+
+  function renderAnnotationEditor(container, paper, initial) {
+    container.innerHTML = "";
+    container.appendChild(el("h5", {}, "Annotation"));
+    const ta = el("textarea", { placeholder: "Write your note about this paper…", rows: 3 });
+    ta.value = initial || "";
+    container.appendChild(ta);
+    const actions = el("div", { class: "ann-actions" });
+    const save = el("button", { class: "btn primary tiny" }, "💾 Save");
+    save.addEventListener("click", async () => {
+      const note = ta.value.trim();
+      try {
+        await api.postJSON(`/api/run/${S.runId}/annotation/${encodeKey(paper.key)}`, { note });
+        renderAnnotation(container, paper, note || null);
+        toast(note ? "Annotation saved." : "Annotation cleared.");
+      } catch (e) { toast("Save failed: " + e.message); }
+    });
+    const cancel = el("button", { class: "btn ghost tiny" }, "Cancel");
+    cancel.addEventListener("click", () => renderAnnotation(container, paper, initial || null));
+    actions.appendChild(save);
+    actions.appendChild(cancel);
+    container.appendChild(actions);
+    ta.focus();
+  }
+
   function highlightTokens(container, tokens) {
     // wrap occurrences of each token in <mark class="tfidf"> within the container's text
     if (!container || !tokens || !tokens.length) return;
@@ -1127,11 +1279,11 @@
     const meta = el("div", { class: "d-meta" });
     let html = "";
     if (p.authors) html += esc(truncate(p.authors, 120));
-    if (p.year) html += ` · ${p.year}`;
+    if (p.year) html += ` · ${esc(String(p.year))}`;
     if (p.venue) html += ` · <em>${esc(p.venue)}</em>`;
     if (p.doi) html += ` · <a href="https://doi.org/${esc(p.doi)}" target="_blank" rel="noopener">${esc(p.doi)}</a>`;
-    if (p.num_citations) html += ` · ${p.num_citations} cites`;
-    if (p.depth != null) html += ` · depth ${p.depth}`;
+    if (p.num_citations) html += ` · ${esc(String(p.num_citations))} cites`;
+    if (p.depth != null) html += ` · depth ${esc(String(p.depth))}`;
     meta.innerHTML = html;
     head.appendChild(meta);
     if ((p.sources || []).length) {
@@ -1153,18 +1305,24 @@
     return rel;
   }
 
+  function safeUrl(url) {
+    return url && /^https?:\/\//i.test(url) ? url : null;
+  }
+
   function buildDetailActions(p) {
     const acts = el("div", { class: "d-actions" });
-    if (p.url) {
-      const a = el("a", { class: "btn ghost tiny", href: p.url, target: "_blank", rel: "noopener" }, "Open ↗");
+    const url = safeUrl(p.url);
+    if (url) {
+      const a = el("a", { class: "btn ghost tiny", href: url, target: "_blank", rel: "noopener noreferrer" }, "Open ↗");
       acts.appendChild(a);
     }
-    if (p.pdf_url) {
-      const a = el("a", { class: "btn ghost tiny", href: p.pdf_url, target: "_blank", rel: "noopener" }, "PDF ↗");
+    const pdfUrl = safeUrl(p.pdf_url);
+    if (pdfUrl) {
+      const a = el("a", { class: "btn ghost tiny", href: pdfUrl, target: "_blank", rel: "noopener noreferrer" }, "PDF ↗");
       acts.appendChild(a);
     }
     if (S.runId && p.key) {
-      const keyEnc = encodeURIComponent(p.key);
+      const keyEnc = encodeKey(p.key);
       const bibtex = el("button", { class: "btn ghost tiny", onclick: () => api.download(`/api/run/${S.runId}/paper/${keyEnc}?format=bibtex`) }, "BibTeX");
       const ris = el("button", { class: "btn ghost tiny", onclick: () => api.download(`/api/run/${S.runId}/paper/${keyEnc}?format=ris`) }, "RIS");
       acts.appendChild(bibtex);
@@ -1311,7 +1469,6 @@
       return;
     }
     if (fmt === "coins") {
-      // open COinS page in a new tab so the Zotero connector can detect it
       window.open(`/cs/api/run/${S.runId}/coins`, "_blank");
       toast("Opened COinS page — use the Zotero connector to import.");
       return;
@@ -1319,6 +1476,68 @@
     const all = S.filter.excluded ? 1 : 0;
     api.download(`/api/run/${S.runId}/export?format=${fmt}&all=${all}`, `cuteysnowball_${S.runId}.${fmt === "bibtex" ? "bib" : fmt}`);
     toast(`Exporting ${fmt.toUpperCase()}…`);
+  }
+
+  function exportGraphSVG() {
+    const svg = document.getElementById("graph-svg");
+    if (!svg) return;
+    // clone the SVG, inline styles, and download
+    const clone = svg.cloneNode(true);
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const T = window.CSUtils;
+    const style = getComputedStyle(document.documentElement);
+    const bg = style.getPropertyValue("--surface").trim() || "#fff";
+    // add a background rect
+    const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bgRect.setAttribute("x", "0"); bgRect.setAttribute("y", "0");
+    bgRect.setAttribute("width", "100%"); bgRect.setAttribute("height", "100%");
+    bgRect.setAttribute("fill", bg);
+    clone.insertBefore(bgRect, clone.firstChild);
+    const data = new XMLSerializer().serializeToString(clone);
+    const blob = new Blob([data], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `graph_${S.runId || "export"}.svg`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast("Graph exported as SVG.");
+  }
+
+  function exportGraphPNG() {
+    const svg = document.getElementById("graph-svg");
+    if (!svg) return;
+    const clone = svg.cloneNode(true);
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const style = getComputedStyle(document.documentElement);
+    const bg = style.getPropertyValue("--surface").trim() || "#fff";
+    const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bgRect.setAttribute("x", "0"); bgRect.setAttribute("y", "0");
+    bgRect.setAttribute("width", "100%"); bgRect.setAttribute("height", "100%");
+    bgRect.setAttribute("fill", bg);
+    clone.insertBefore(bgRect, clone.firstChild);
+    const data = new XMLSerializer().serializeToString(clone);
+    const svgBlob = new Blob([data], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = svg.clientWidth * 2;
+      canvas.height = svg.clientHeight * 2;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(2, 2);
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob((blob) => {
+        const dlUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = dlUrl; a.download = `graph_${S.runId || "export"}.png`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(dlUrl);
+        URL.revokeObjectURL(url);
+        toast("Graph exported as PNG.");
+      });
+    };
+    img.onerror = () => { toast("PNG export failed."); URL.revokeObjectURL(url); };
+    img.src = url;
   }
 
   async function resumeRun() {
@@ -1500,7 +1719,11 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keys, format: fmt }),
       });
-      if (!resp.ok) { toast("Export failed: " + resp.status); return; }
+      if (!resp.ok) {
+        let msg = "Export failed: " + resp.status;
+        try { const j = await resp.json(); if (j.error) msg += ": " + j.error; } catch (_) {}
+        toast(msg); return;
+      }
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1546,6 +1769,24 @@
     swap("view-runs");
     const ul = $("#runs-list");
     ul.innerHTML = "<li class='muted'>loading…</li>";
+    // add run search bar (once)
+    let searchbar = document.querySelector(".run-search-bar");
+    if (!searchbar) {
+      searchbar = el("div", { class: "run-search-bar" });
+      const inp = el("input", { type: "search", placeholder: "search across all runs by paper title or DOI…", id: "run-search-input" });
+      const count = el("span", { class: "rs-count" }, "");
+      searchbar.appendChild(inp);
+      searchbar.appendChild(count);
+      ul.parentElement.insertBefore(searchbar, ul);
+      let stimer;
+      inp.addEventListener("input", () => {
+        clearTimeout(stimer);
+        const q = inp.value.trim();
+        count.textContent = q ? "searching…" : "";
+        if (q.length < 2) { document.querySelector(".run-search-results")?.remove(); return; }
+        stimer = setTimeout(() => runSearch(q, count), 400);
+      });
+    }
     let filterBar = document.querySelector(".runs-filter");
     try {
       const runs = await api.getJSON("/api/runs");
@@ -1581,6 +1822,41 @@
     } catch (e) {
       ul.innerHTML = `<li class='muted'>failed: ${esc(e.message)}</li>`;
     }
+  }
+
+  async function runSearch(q, countEl) {
+    try {
+      const d = await api.getJSON(`/api/search-runs?q=${encodeURIComponent(q)}`);
+      const results = d.results || [];
+      countEl.textContent = `${results.length} match${results.length === 1 ? "" : "es"}`;
+      let resultsEl = document.querySelector(".run-search-results");
+      if (!resultsEl) {
+        resultsEl = el("ul", { class: "run-search-results" });
+        const ul = $("#runs-list");
+        ul.parentElement.insertBefore(resultsEl, ul);
+      }
+      resultsEl.innerHTML = "";
+      if (!results.length) {
+        resultsEl.innerHTML = "<li class='muted'>No papers found across runs.</li>";
+        return;
+      }
+      results.forEach((r) => {
+        const li = el("li");
+        li.addEventListener("click", () => {
+          S.runId = r.run_id;
+          loadResults(r.run_id);
+          swap("view-run");
+        });
+        li.appendChild(el("div", { class: "rsr-title" }, truncate(r.paper.title || "(untitled)", 80)));
+        const meta = el("div", { class: "rsr-meta" });
+        meta.textContent = (r.paper.authors ? truncate(r.paper.authors, 60) + " · " : "") + (r.paper.year || "—") + " · " + (r.paper.num_citations || 0) + " cites · rel " + (r.paper.relevance || 0).toFixed(2);
+        li.appendChild(meta);
+        const run = el("div", { class: "rsr-run" });
+        run.textContent = `run ${r.run_id.slice(0, 8)} · ${r.run_mode} · tags: ${(r.run_tags || []).join(", ") || "none"}`;
+        li.appendChild(run);
+        resultsEl.appendChild(li);
+      });
+    } catch (e) { countEl.textContent = "error"; }
   }
 
   function renderFilteredRuns(runs, ul) {

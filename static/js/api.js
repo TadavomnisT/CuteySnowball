@@ -48,6 +48,8 @@
     let es = null;
     let closed = false;
     let reconnectTimer = null;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT = 3;
     const h = handlers || {};
 
     function open() {
@@ -66,12 +68,17 @@
       es.onerror = () => {
         if (closed) return;
         try { es && es.close(); } catch (_) {}
-        // try once more after 2s, then give up
-        if (!reconnectTimer) {
-          reconnectTimer = setTimeout(() => {
-            reconnectTimer = null;
-            if (!closed) open();
-          }, 2000);
+        if (reconnectAttempts < MAX_RECONNECT) {
+          reconnectAttempts++;
+          if (!reconnectTimer) {
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null;
+              if (!closed) open();
+            }, 2000);
+          }
+        } else {
+          closed = true;
+          h.onDone && h.onDone();
         }
       };
     }

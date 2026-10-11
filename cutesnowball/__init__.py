@@ -7,7 +7,7 @@ Public entry point:
     from cutesnowball import create_app
 """
 
-__version__ = "0.8.0"
+__version__ = "1.1.0"
 __author__ = "TadavomnisT"
 __license__ = "GPL-3.0-or-later"
 

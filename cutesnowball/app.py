@@ -29,6 +29,7 @@ from typing import Dict, List
 from flask import Flask, Response, request, jsonify, send_from_directory, stream_with_context
 
 from .config import config
+from . import __version__
 from .engines import build_adapters
 from .models import Paper, Run
 from . import store as store_mod
@@ -92,7 +93,7 @@ def create_app(static_folder: str = None) -> Flask:
     def get_config():
         return jsonify(
             {
-                "version": "0.1.0",
+                "version": __version__,
                 "mailto": config.mailto,
                 "sources": {
                     "openalex": config.enable_openalex,
@@ -131,7 +132,7 @@ def create_app(static_folder: str = None) -> Flask:
 
     @app.route("/api/health")
     def health():
-        return jsonify({"status": "ok", "version": "0.8.0"})
+        return jsonify({"status": "ok", "version": __version__})
 
     # --- quick search (option 2 seed picking) -------------------------------
     @app.route("/api/search", methods=["POST"])
@@ -563,6 +564,106 @@ def create_app(static_folder: str = None) -> Flask:
     def list_runs():
         return jsonify(store_mod.list_runs())
 
+    # --- paper annotations --------------------------------------------------
+    @app.route("/api/run/<run_id>/annotation/<path:paper_key>", methods=["GET", "POST", "DELETE"])
+    def annotation(run_id, paper_key):
+        from urllib.parse import unquote
+        pk = unquote(paper_key).strip()
+        if request.method == "GET":
+            note = store_mod.get_annotation(run_id, pk)
+            return jsonify({"note": note, "paper_key": pk})
+        if request.method == "DELETE":
+            store_mod.delete_annotation(run_id, pk)
+            return jsonify({"ok": True})
+        # POST
+        body = request.get_json(force=True, silent=True) or {}
+        note = (body.get("note") or "").strip()
+        if not note:
+            store_mod.delete_annotation(run_id, pk)
+            return jsonify({"ok": True, "note": None})
+        store_mod.set_annotation(run_id, pk, note)
+        return jsonify({"ok": True, "note": note})
+
+    # --- paper inclusion/exclusion toggle (manual override) -----------------
+    @app.route("/api/run/<run_id>/toggle/<path:paper_key>", methods=["POST"])
+    def toggle_inclusion(run_id, paper_key):
+        run = store_mod.load_run(run_id)
+        if not run:
+            return jsonify({"error": "not found"}), 404
+        from urllib.parse import unquote
+        pk = unquote(paper_key).strip()
+        p = run.papers.get(pk)
+        if not p:
+            for pp in run.papers.values():
+                if pp.doi and ("doi:" + pp.doi) == pk:
+                    p = pp
+                    break
+            if not p:
+                return jsonify({"error": "paper not found"}), 404
+        p.included = not p.included
+        p.excluded_reason = "" if p.included else "manual_exclusion"
+        store_mod.save_run(run)
+        return jsonify({"ok": True, "included": p.included, "key": pk})
+
+    @app.route("/api/run/<run_id>/annotations")
+    def list_annotations_route(run_id):
+        return jsonify(store_mod.list_annotations(run_id))
+
+    # --- run timeline (corpus growth round-by-round) -----------------------
+    @app.route("/api/run/<run_id>/timeline")
+    def run_timeline(run_id):
+        run = store_mod.load_run(run_id)
+        if not run:
+            return jsonify({"error": "not found"}), 404
+        # group papers by discovered_round
+        by_round = {}
+        for p in run.papers.values():
+            r = p.discovered_round or 0
+            by_round[r] = by_round.get(r, 0) + 1
+        # cumulative growth
+        rounds = sorted(by_round.keys())
+        cumulative = 0
+        timeline = []
+        for r in rounds:
+            cumulative += by_round[r]
+            timeline.append({"round": r, "new": by_round[r], "cumulative": cumulative})
+        # also edge counts per round (approximate by source paper's discovered_round)
+        edges_by_round = {}
+        for e in run.edges:
+            src = run.papers.get(e["source"])
+            if src:
+                r = src.discovered_round or 0
+                edges_by_round[r] = edges_by_round.get(r, 0) + 1
+        edge_timeline = []
+        for r in rounds:
+            edge_timeline.append({"round": r, "edges": edges_by_round.get(r, 0)})
+        return jsonify({"papers": timeline, "edges": edge_timeline, "total_rounds": len(rounds)})
+
+    # --- search across all runs by paper title/DOI --------------------------
+    @app.route("/api/search-runs")
+    def search_runs():
+        q = (request.args.get("q") or "").strip().lower()
+        if not q or len(q) < 2:
+            return jsonify({"results": [], "query": q})
+        results = []
+        for r in store_mod.list_runs(limit=50):
+            run = store_mod.load_run(r["run_id"])
+            if not run:
+                continue
+            for p in run.papers.values():
+                title = (p.title or "").lower()
+                doi = (p.doi or "").lower()
+                if q in title or q in doi:
+                    results.append({
+                        "run_id": r["run_id"],
+                        "run_mode": r["mode"],
+                        "run_tags": r.get("tags", []),
+                        "paper": p.to_dict(),
+                    })
+                    if len(results) >= 50:
+                        return jsonify({"results": results, "query": q})
+        return jsonify({"results": results, "query": q})
+
     # --- relevance-score explainer -----------------------------------------
     @app.route("/api/run/<run_id>/explain/<path:paper_key>")
     def explain(run_id, paper_key):
@@ -685,7 +786,7 @@ def create_app(static_folder: str = None) -> Flask:
                 "Summarise this academic paper in ONE plain sentence (max ~40 words). "
                 "Be specific about the contribution. No preamble.\n\n"
                 f"Title: {p.title or '(untitled)'}\n"
-                f"Abstract: {p.abstract or '(no abstract)'}"
+                f"Abstract: {(p.abstract or '(no abstract)')[:3000]}"
             )
             r = subprocess.run(
                 ["z-ai", "chat", "-p", prompt],
@@ -695,7 +796,10 @@ def create_app(static_folder: str = None) -> Flask:
                 return jsonify({"error": "z-ai CLI failed", "stderr": r.stderr[:500]}), 502
             # parse JSON output (strip status lines)
             lines = [l for l in r.stdout.split("\n") if not l.startswith("🚀")]
-            data = json.loads("\n".join(lines))
+            try:
+                data = json.loads("\n".join(lines))
+            except json.JSONDecodeError:
+                return jsonify({"error": "z-ai returned non-JSON output (CLI may have printed a banner)"}), 502
             summary = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
             if not summary:
                 return jsonify({"error": "empty summary"}), 502
@@ -747,19 +851,26 @@ def create_app(static_folder: str = None) -> Flask:
                         "Summarise this academic paper in ONE plain sentence (max ~40 words). "
                         "Be specific about the contribution. No preamble.\n\n"
                         f"Title: {p.title or '(untitled)'}\n"
-                        f"Abstract: {p.abstract or '(no abstract)'}"
+                        f"Abstract: {(p.abstract or '(no abstract)')[:3000]}"
                     )
                     r = _sp.run(["z-ai", "chat", "-p", prompt], capture_output=True, text=True, timeout=45)
                     if r.returncode != 0:
                         yield f"event: error\ndata: {json.dumps({'key': p.key(), 'error': 'cli failed'})}\n\n"
                         continue
                     lines = [l for l in r.stdout.split("\n") if not l.startswith("🚀")]
-                    data = json.loads("\n".join(lines))
+                    try:
+                        data = json.loads("\n".join(lines))
+                    except json.JSONDecodeError:
+                        yield f"event: error\ndata: {json.dumps({'key': p.key(), 'error': 'z-ai returned non-JSON output'})}\n\n"
+                        continue
                     summary = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
                     done += 1
                     yield f"event: summary\ndata: {json.dumps({'key': p.key(), 'title': p.title, 'summary': summary, 'done': done, 'total': len(papers)})}\n\n"
                 except _sp.TimeoutExpired:
                     yield f"event: error\ndata: {json.dumps({'key': p.key(), 'error': 'timeout'})}\n\n"
+                except FileNotFoundError:
+                    yield f"event: error\ndata: {json.dumps({'key': p.key(), 'error': 'z-ai CLI not installed on server'})}\n\n"
+                    break
                 except Exception as exc:
                     yield f"event: error\ndata: {json.dumps({'key': p.key(), 'error': str(exc)})}\n\n"
             yield f"event: done\ndata: {json.dumps({'done': done, 'total': len(papers)})}\n\n"

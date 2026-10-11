@@ -60,7 +60,75 @@ def init_db() -> None:
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_paper_cache_at ON paper_cache(cached_at)"
             )
+            # Paper annotations (user notes on individual papers within a run)
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS annotations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id TEXT NOT NULL,
+                    paper_key TEXT NOT NULL,
+                    note TEXT NOT NULL,
+                    created_at REAL NOT NULL,
+                    UNIQUE(run_id, paper_key)
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_ann_run ON annotations(run_id)"
+            )
             conn.commit()
+        finally:
+            conn.close()
+
+
+def get_annotation(run_id: str, paper_key: str) -> Optional[str]:
+    with _lock:
+        conn = _connect()
+        try:
+            row = conn.execute(
+                "SELECT note FROM annotations WHERE run_id=? AND paper_key=?",
+                (run_id, paper_key),
+            ).fetchone()
+            return row["note"] if row else None
+        finally:
+            conn.close()
+
+
+def set_annotation(run_id: str, paper_key: str, note: str) -> None:
+    with _lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                "INSERT OR REPLACE INTO annotations (run_id, paper_key, note, created_at) VALUES (?, ?, ?, ?)",
+                (run_id, paper_key, note, time.time()),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def delete_annotation(run_id: str, paper_key: str) -> None:
+    with _lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                "DELETE FROM annotations WHERE run_id=? AND paper_key=?",
+                (run_id, paper_key),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def list_annotations(run_id: str) -> List[Dict]:
+    with _lock:
+        conn = _connect()
+        try:
+            rows = conn.execute(
+                "SELECT paper_key, note, created_at FROM annotations WHERE run_id=? ORDER BY created_at DESC",
+                (run_id,),
+            ).fetchall()
+            return [{"paper_key": r["paper_key"], "note": r["note"], "created_at": r["created_at"]} for r in rows]
         finally:
             conn.close()
 

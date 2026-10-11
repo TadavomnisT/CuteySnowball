@@ -41,6 +41,7 @@ def export_csv(run: Run, include_abstracts: bool = True, only_included: bool = T
         "Sources",
         "URL",
         "Abstract",
+        "Annotation",
     ]
     if not include_abstracts:
         cols.remove("Abstract")
@@ -71,6 +72,13 @@ def export_csv(run: Run, include_abstracts: bool = True, only_included: bool = T
         ]
         if include_abstracts:
             row.append(_csv_safe(p.abstract))
+        # annotation (if available)
+        try:
+            from .store import get_annotation
+            note = get_annotation(run.run_id, p.key()) or ""
+        except Exception:
+            note = ""
+        row.append(_csv_safe(note))
         w.writerow(row)
     return buf.getvalue()
 

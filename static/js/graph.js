@@ -32,9 +32,12 @@ Nodes are circles sized by citation count, colored by status
     showGrid: true,
     showAbstractsOnHover: false,
     allowNodeDrag: false,  // when true, nodes are draggable
+    straight: false,      // when true, edges are straight lines (not bezier)
+    sizeMode: "citations", // "citations" | "relevance" | "degree" | "fixed"
     search: "",
     yearFrom: null,
     yearTo: null,
+    layout: "timeline",   // "timeline" or "force"
     papers: [],
     edgesRaw: [],
   };
@@ -140,6 +143,14 @@ Nodes are circles sized by citation count, colored by status
 
   // ---- compute layout ----
   function layout() {
+    if (State.layout === "force") {
+      layoutForce();
+    } else {
+      layoutTimeline();
+    }
+  }
+
+  function layoutTimeline() {
     const W = State.width || 800;
     const H = State.height || 560;
     const padX = 60, padY = 50;
@@ -182,8 +193,110 @@ Nodes are circles sized by citation count, colored by status
   }
 
   function nodeRadius(p) {
+    const mode = State.sizeMode || "citations";
+    if (mode === "fixed") return 6;
+    if (mode === "relevance") {
+      const r = p.relevance || 0;
+      return 4 + Math.round(r * 10);
+    }
+    if (mode === "degree") {
+      // count edges touching this node
+      let deg = 0;
+      for (const e of State.edgesRaw) {
+        if (e.source === p.key || e.target === p.key) deg++;
+      }
+      return 4 + Math.min(10, Math.log2(deg + 1) * 2);
+    }
+    // default: citations
     const c = p.num_citations || 0;
     return 4 + Math.min(10, Math.log2(c + 1) * 1.6);
+  }
+
+  // ---- force-directed layout (simple spring model, 60 iterations) ----
+  function layoutForce() {
+    const W = State.width || 800;
+    const H = State.height || 560;
+    const papers = State.papers;
+    if (!papers.length) return;
+    State.pos = {};
+    // initialize with random positions in a circle around center
+    const cx = W / 2, cy = H / 2;
+    const R = Math.min(W, H) * 0.35;
+    papers.forEach((p, i) => {
+      const angle = (i / papers.length) * 2 * Math.PI;
+      State.pos[p.key] = {
+        x: cx + Math.cos(angle) * R * (0.5 + Math.random() * 0.5),
+        y: cy + Math.sin(angle) * R * (0.5 + Math.random() * 0.5),
+        r: nodeRadius(p),
+        vx: 0, vy: 0,
+      };
+    });
+    // build adjacency
+    const adj = {};
+    papers.forEach((p) => { adj[p.key] = []; });
+    for (const e of State.edgesRaw) {
+      if (adj[e.source]) adj[e.source].push(e.target);
+      if (adj[e.target]) adj[e.target].push(e.source);
+    }
+    // iterate
+    const k = 1.5; // spring length
+    const iterations = 60;
+    const dt = 0.1;
+    for (let iter = 0; iter < iterations; iter++) {
+      // repulsive forces (all pairs, simplified — only n^2 for small graphs)
+      for (let i = 0; i < papers.length; i++) {
+        const a = State.pos[papers[i].key];
+        if (!a) continue;
+        for (let j = i + 1; j < papers.length; j++) {
+          const b = State.pos[papers[j].key];
+          if (!b) continue;
+          let dx = a.x - b.x, dy = a.y - b.y;
+          let dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
+          const force = (k * k) / (dist * dist) * 2;
+          const fx = (dx / dist) * force * dt;
+          const fy = (dy / dist) * force * dt;
+          a.vx += fx; a.vy += fy;
+          b.vx -= fx; b.vy -= fy;
+        }
+      }
+      // attractive forces (edges)
+      for (const e of State.edgesRaw) {
+        const a = State.pos[e.source], b = State.pos[e.target];
+        if (!a || !b) continue;
+        let dx = b.x - a.x, dy = b.y - a.y;
+        let dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        const force = (dist * dist) / k * 0.5;
+        const fx = (dx / dist) * force * dt;
+        const fy = (dy / dist) * force * dt;
+        a.vx += fx; a.vy += fy;
+        b.vx -= fx; b.vy -= fy;
+      }
+      // apply velocity + centering
+      for (const p of papers) {
+        const pos = State.pos[p.key];
+        if (!pos) continue;
+        pos.x += pos.vx;
+        pos.y += pos.vy;
+        pos.vx *= 0.85; // damping
+        pos.vy *= 0.85;
+        // keep within bounds
+        pos.x = Math.max(20, Math.min(W - 20, pos.x));
+        pos.y = Math.max(20, Math.min(H - 20, pos.y));
+      }
+    }
+    // remove velocity props (not needed for rendering)
+    for (const p of papers) {
+      const pos = State.pos[p.key];
+      if (pos) { delete pos.vx; delete pos.vy; }
+    }
+  }
+
+  function setLayout(name) {
+    State.layout = name || "timeline";
+    layout();
+    render();
+    fit();
+    renderMinimap();
   }
 
   // ---- render ----
@@ -270,10 +383,15 @@ Nodes are circles sized by citation count, colored by status
         continue; // skip non-matching edges entirely for clarity
       }
       const path = document.createElementNS(ns, "path");
-      // bezier from a to b
-      const mx = (a.x + b.x) / 2;
-      const my = (a.y + b.y) / 2 + (a.y - b.y) * 0.2;
-      const d = `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`;
+      // bezier from a to b (or straight line if State.straight)
+      let d;
+      if (State.straight) {
+        d = `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
+      } else {
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2 + (a.y - b.y) * 0.2;
+        d = `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`;
+      }
       path.setAttribute("d", d);
       path.setAttribute("fill", "none");
       // edge weight by average relevance of endpoints
@@ -296,14 +414,12 @@ Nodes are circles sized by citation count, colored by status
     }
 
     // nodes
-    const yearSet = new Set();
     for (const p of State.papers) {
       const pos = State.pos[p.key];
       if (!pos) continue;
       // year-range filter
       if (State.yearFrom && (!p.year || p.year < State.yearFrom)) continue;
       if (State.yearTo && (!p.year || p.year > State.yearTo)) continue;
-      yearSet.add(p.key);
       // skip nodes that don't match search (when searching)
       const blob = ((p.title || "") + " " + (p.authors || "") + " " + (p.doi || "")).toLowerCase();
       if (search && !blob.includes(search)) continue;
@@ -383,12 +499,7 @@ Nodes are circles sized by citation count, colored by status
         // update the node group transform directly (fast, no full re-render)
         const gEl = State.nodeLayer.querySelector(`g[data-key="${CSS.escape(State.nodeDrag.key)}"]`);
         if (gEl) gEl.setAttribute("transform", `translate(${pos.x} ${pos.y})`);
-        // update edges touching this node
-        const edges = State.edgeLayer.querySelectorAll("path");
-        edges.forEach((pathEl) => {
-          // we stored source/target as data attrs? no — recompute all edges touching this node
-        });
-        // simpler: re-render edges only
+        // re-render edges to follow the dragged node
         rerenderEdges();
       }
     });
@@ -432,9 +543,13 @@ Nodes are circles sized by citation count, colored by status
       if ((State.yearFrom || State.yearTo) && (!yearFilterSet.has(e.source) || !yearFilterSet.has(e.target))) continue;
       if (search && !matchSet.has(e.source) && !matchSet.has(e.target)) continue;
       const path = document.createElementNS(ns, "path");
-      const mx = (a.x + b.x) / 2;
-      const my = (a.y + b.y) / 2 + (a.y - b.y) * 0.2;
-      path.setAttribute("d", `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`);
+      if (State.straight) {
+        path.setAttribute("d", `M ${a.x} ${a.y} L ${b.x} ${b.y}`);
+      } else {
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2 + (a.y - b.y) * 0.2;
+        path.setAttribute("d", `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`);
+      }
       path.setAttribute("fill", "none");
       const avgRel = ((relByKey[e.source] || 0) + (relByKey[e.target] || 0)) / 2;
       let wClass = "graph-edge-weak";
@@ -567,6 +682,8 @@ Nodes are circles sized by citation count, colored by status
     if (key === "forward") State.showForward = val;
     if (key === "backward") State.showBackward = val;
     if (key === "grid") State.showGrid = val;
+    if (key === "straight") State.straight = val;
+    if (key === "sizeMode") { State.sizeMode = val; layout(); render(); return; }
     if (key === "abstracts") State.showAbstractsOnHover = val;
     if (key === "drag") {
       State.allowNodeDrag = val;
@@ -845,5 +962,5 @@ Nodes are circles sized by citation count, colored by status
     vp.setAttribute("height", Math.max(3, vh * sy));
   }
 
-  global.CSGraph = { init, setData, setOption, setSearch, setYearRange, focusByKey, fit, relayout: () => { layout(); render(); fit(); renderMinimap(); }, rerender, setSelectMode, clearSelection, getSelection: () => Array.from(selectedNodes) };
+  global.CSGraph = { init, setData, setOption, setSearch, setYearRange, setLayout, focusByKey, fit, relayout: () => { layout(); render(); fit(); renderMinimap(); }, rerender, setSelectMode, clearSelection, getSelection: () => Array.from(selectedNodes) };
 })(window);

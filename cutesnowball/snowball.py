@@ -171,66 +171,59 @@ class Snowballer:
         """Run forward + backward snowball on a single paper.
 
         Returns the list of NEW papers discovered (already merged into run).
+        The `direction` option ("both" | "forward" | "backward") controls which
+        directions are walked.
         """
         new_papers: List[Paper] = []
+        direction = "both"
+        if isinstance(self.run.options, dict):
+            direction = self.run.options.get("direction", "both")
         # --- backward (references) ---
-        for ad in self.adapters:
-            if self.stop_flag.is_set():
-                break
-            try:
-                refs = ad.backward(paper)
-            except Exception as exc:
-                log.warning("%s.backward failed: %s", ad.name, exc)
-                _emit(
-                    self.cb,
-                    phase="eligibility",
-                    msg=f"{ad.name} backward error on '{paper.title[:40]}': {exc}",
-                )
-                continue
-            for r in refs or []:
-                if not r.title and not r.doi:
+        if direction in ("both", "backward"):
+            for ad in self.adapters:
+                if self.stop_flag.is_set():
+                    break
+                try:
+                    refs = ad.backward(paper)
+                except Exception as exc:
+                    log.warning("%s.backward failed: %s", ad.name, exc)
+                    _emit(self.cb, phase="eligibility",
+                          msg=f"{ad.name} backward error on '{paper.title[:40]}': {exc}")
                     continue
-                already = self.run.has(r)
-                merged = self.run.add_paper(r)
-                merged.discovered_round = merged.discovered_round or round_idx
-                self.run.add_edge(paper.key(), merged.key(), "backward")
-                if not already and merged is r:
-                    new_papers.append(merged)
-                elif not already:
-                    new_papers.append(merged)
-            _emit(
-                self.cb,
-                phase="eligibility",
-                msg=f"{ad.name}: {len(refs or [])} references from '{paper.title[:40]}…'",
-            )
+                for r in refs or []:
+                    if not r.title and not r.doi:
+                        continue
+                    already = self.run.has(r)
+                    merged = self.run.add_paper(r)
+                    merged.discovered_round = merged.discovered_round or round_idx
+                    self.run.add_edge(paper.key(), merged.key(), "backward")
+                    if not already:
+                        new_papers.append(merged)
+                _emit(self.cb, phase="eligibility",
+                      msg=f"{ad.name}: {len(refs or [])} references from '{paper.title[:40]}…'")
         # --- forward (citations) ---
-        for ad in self.adapters:
-            if self.stop_flag.is_set():
-                break
-            try:
-                cites = ad.forward(paper)
-            except Exception as exc:
-                log.warning("%s.forward failed: %s", ad.name, exc)
-                _emit(
-                    self.cb,
-                    phase="eligibility",
-                    msg=f"{ad.name} forward error on '{paper.title[:40]}': {exc}",
-                )
-                continue
-            for c in cites or []:
-                if not c.title and not c.doi:
+        if direction in ("both", "forward"):
+            for ad in self.adapters:
+                if self.stop_flag.is_set():
+                    break
+                try:
+                    cites = ad.forward(paper)
+                except Exception as exc:
+                    log.warning("%s.forward failed: %s", ad.name, exc)
+                    _emit(self.cb, phase="eligibility",
+                          msg=f"{ad.name} forward error on '{paper.title[:40]}': {exc}")
                     continue
-                already = self.run.has(c)
-                merged = self.run.add_paper(c)
-                merged.discovered_round = merged.discovered_round or round_idx
-                self.run.add_edge(merged.key(), paper.key(), "forward")
-                if not already:
-                    new_papers.append(merged)
-            _emit(
-                self.cb,
-                phase="eligibility",
-                msg=f"{ad.name}: {len(cites or [])} citations of '{paper.title[:40]}…'",
-            )
+                for c in cites or []:
+                    if not c.title and not c.doi:
+                        continue
+                    already = self.run.has(c)
+                    merged = self.run.add_paper(c)
+                    merged.discovered_round = merged.discovered_round or round_idx
+                    self.run.add_edge(merged.key(), paper.key(), "forward")
+                    if not already:
+                        new_papers.append(merged)
+                _emit(self.cb, phase="eligibility",
+                      msg=f"{ad.name}: {len(cites or [])} citations of '{paper.title[:40]}…'")
         return new_papers
 
     # ------------------------------------------------------------------
