@@ -80,6 +80,12 @@ See [`docs/references.md`](docs/references.md) for the full citation list.
 
 ## Quick start
 
+Install and go to project directory:
+```bash
+git clone https://github.com/TadavomnisT/CuteySnowball.git
+cd CuteySnowball
+```
+Run the project using:
 ```bash
 # 1. (optional) make a venv
 python3 -m venv .venv && source .venv/bin/activate
