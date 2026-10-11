@@ -78,7 +78,7 @@ See [`docs/references.md`](docs/references.md) for the full citation list.
 
 ---
 
-## 🚀 Quick start
+## Quick start
 
 ```bash
 # 1. (optional) make a venv
@@ -103,7 +103,7 @@ Then:
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 Everything is tunable via environment variables (see
 [`cutesnowball/config.py`](cutesnowball/config.py)):
@@ -128,7 +128,7 @@ Everything is tunable via environment variables (see
 
 ---
 
-## 🛡️ Anti-block by design
+## Anti-block by design
 
 CuteySnowball is **safe by default**. The four enabled APIs are free, key-less,
 scholarly services that never block your IP:
@@ -158,7 +158,7 @@ See [`docs/anti-block.md`](docs/anti-block.md) for the full strategy.
 
 ---
 
-## 📁 Project layout
+## Project layout
 
 ```
 CuteySnowball/
@@ -205,7 +205,7 @@ CuteySnowball/
 
 ---
 
-## 🔌 API
+## API
 
 All routes are JSON over HTTP. SSE for live progress.
 
@@ -257,7 +257,7 @@ curl -OJ http://localhost:5000/api/run/3aab40178db6/export?format=bibtex
 
 ---
 
-## 🧠 How it works (30-second version)
+## How it works (30-second version)
 
 1. **Seed.** You give DOIs/PDFs or a keyword query. In keyword mode we search
    all enabled sources, score the hits, keep the top-N as seeds.
@@ -280,7 +280,7 @@ module-by-module deep dive.
 
 ---
 
-## 📄 License
+## License
 
 **GNU General Public License v3.0** — see [`LICENSE`](LICENSE). CuteySnowball is
 free software: you can redistribute it and/or modify it under the terms of the
@@ -289,7 +289,7 @@ are acknowledged above and in [`docs/references.md`](docs/references.md).
 
 ---
 
-## 🙏 Acknowledgements
+## Acknowledgements
 
 CuteySnowball stands on the shoulders of:
 
@@ -307,7 +307,7 @@ and OpenCitations.*
 
 ---
 
-## ⚠️ Limits &amp; caveats
+## Limits &amp; caveats
 
 - **Scanned PDFs** have no text layer; the PDF reference parser returns nothing
   (same limitation as Mozilla pdf.js). Provide the DOI instead.
