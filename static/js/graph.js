@@ -91,7 +91,7 @@ Nodes are circles sized by citation count, colored by status
       defs.appendChild(rad);
     };
     const T0 = theme();
-    mkGrad("grad-seed", T0.accent3, T0.accent);
+    mkGrad("grad-seed", "#fbbf24", "#f59e0b");
     mkGrad("grad-hot", T0.accent, T0.accent2);
     State.svg.appendChild(defs);
 
@@ -194,22 +194,21 @@ Nodes are circles sized by citation count, colored by status
 
   function nodeRadius(p) {
     const mode = State.sizeMode || "citations";
-    if (mode === "fixed") return 6;
+    const seedBoost = p.seed ? 3 : 0;
+    if (mode === "fixed") return 6 + seedBoost;
     if (mode === "relevance") {
       const r = p.relevance || 0;
-      return 4 + Math.round(r * 10);
+      return 4 + Math.round(r * 10) + seedBoost;
     }
     if (mode === "degree") {
-      // count edges touching this node
       let deg = 0;
       for (const e of State.edgesRaw) {
         if (e.source === p.key || e.target === p.key) deg++;
       }
-      return 4 + Math.min(10, Math.log2(deg + 1) * 2);
+      return 4 + Math.min(10, Math.log2(deg + 1) * 2) + seedBoost;
     }
-    // default: citations
     const c = p.num_citations || 0;
-    return 4 + Math.min(10, Math.log2(c + 1) * 1.6);
+    return 4 + Math.min(10, Math.log2(c + 1) * 1.6) + seedBoost;
   }
 
   // ---- force-directed layout (simple spring model, 60 iterations) ----
@@ -432,7 +431,7 @@ Nodes are circles sized by citation count, colored by status
       const c = document.createElementNS(ns, "circle");
       c.setAttribute("r", pos.r);
       let fill = T.accent2, stroke = T.lineStrong;
-      if (p.seed) { fill = T.accent3; stroke = T.ink; }
+      if (p.seed) { fill = "url(#grad-seed)"; stroke = "#b45309"; }
       else if (!p.included) { fill = T.lineStrong; stroke = T.lineStrong; }
       // gradient fill for seeds + high-relevance included
       if (p.seed || (p.included && (p.relevance || 0) > 0.4)) {
@@ -738,7 +737,7 @@ Nodes are circles sized by citation count, colored by status
       rad.appendChild(s1); rad.appendChild(s2);
       defs.appendChild(rad);
     };
-    mkGrad("grad-seed", T.accent3, T.accent);
+    mkGrad("grad-seed", "#fbbf24", "#f59e0b");
     mkGrad("grad-hot", T.accent, T.accent2);
     render();
   }

@@ -154,17 +154,23 @@ a:hover { text-decoration: underline; }
 @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 /* ---------- hero ---------- */
-.hero { text-align: center; margin: 24px 0 32px; }
+.hero {
+  text-align: center; margin: 24px 0 32px;
+  padding: 32px 20px;
+  background: linear-gradient(135deg, var(--accent-soft), var(--accent2-soft));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+}
 .hero h2 {
-  font-size: 2rem;
-  margin: 0 0 10px;
+  font-size: 2.2rem; margin: 0 0 10px;
   letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent3));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 .hero .lead {
-  max-width: 720px;
-  margin: 0 auto;
-  color: var(--ink-soft);
-  font-size: 1.05rem;
+  max-width: 720px; margin: 0 auto;
+  color: var(--ink-soft); font-size: 1.05rem; line-height: 1.6;
 }
 .hero .lead em { color: var(--accent); font-style: normal; font-weight: 600; }
 
@@ -179,17 +185,25 @@ a:hover { text-decoration: underline; }
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  padding: 26px;
+  padding: 28px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
   box-shadow: var(--shadow);
   outline: none;
+  position: relative;
+  overflow: hidden;
+}
+.choice-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent3));
+  opacity: 0; transition: opacity 0.25s;
 }
 .choice-card:hover, .choice-card:focus-visible {
   border-color: var(--accent);
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
 }
+.choice-card:hover::before, .choice-card:focus-visible::before { opacity: 1; }
 .choice-emoji { font-size: 2.2rem; margin-bottom: 8px; }
 .choice-card h3 { margin: 0 0 8px; font-size: 1.15rem; }
 .choice-card p { margin: 0 0 14px; color: var(--ink-soft); font-size: 0.9rem; }
@@ -379,8 +393,14 @@ a:hover { text-decoration: underline; }
 .runs-list::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
 
 /* ---------- results ---------- */
-.results-header { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-bottom: 14px; }
-.results-header h2 { margin: 0; flex: 1; }
+.results-header {
+  display: flex; flex-direction: column; gap: 10px;
+  margin-bottom: 14px; padding: 16px 20px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.results-header h2 { margin: 0; font-size: 1.15rem; color: var(--ink); }
+.results-header .results-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .results-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .results-actions .field.inline input[type=range] { width: 110px; }
 .results-actions input[type=search], .results-actions input[type=number] {
@@ -479,7 +499,7 @@ a:hover { text-decoration: underline; }
 }
 .legend-item { display: inline-flex; align-items: center; gap: 5px; }
 .legend .dot { width: 10px; height: 10px; border-radius: 50%; }
-.legend .dot.seed { background: var(--accent3); border: 1px solid var(--ink); }
+.legend .dot.seed { background: #fbbf24; border: 1px solid #b45309; }
 .legend .dot.inc { background: var(--accent2); }
 .legend .dot.exc { background: var(--line-strong); }
 .legend .edge { width: 16px; height: 0; border-top: 2px solid; }
@@ -548,7 +568,7 @@ thead th {
 }
 tbody td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 tbody tr:hover { background: var(--surface-2); }
-tbody tr.seed { background: var(--accent3-soft); }
+tbody tr.seed { background: #fef3c7; border-left: 3px solid #f59e0b; }
 tbody tr.exc { opacity: 0.55; }
 
 /* ---------- search results ---------- */
@@ -1333,7 +1353,7 @@ kbd {
 .graph-minimap:hover { opacity: 1; }
 .graph-minimap svg { width: 100%; height: 100%; }
 .graph-minimap .mm-node { fill: var(--accent2); }
-.graph-minimap .mm-node.seed { fill: var(--accent3); }
+.graph-minimap .mm-node.seed { fill: #fbbf24; }
 .graph-minimap .mm-viewport {
   fill: none; stroke: var(--accent); stroke-width: 1.5;
 }
