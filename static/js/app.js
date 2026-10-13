@@ -111,40 +111,85 @@
     $("#detail-close").addEventListener("click", closeDetail);
     $("#detail-backdrop").addEventListener("click", closeDetail);
 
-    // PDF dropzone — click to browse + drag-and-drop
+    // PDF dropzone — click to browse + drag-and-drop with file list
     const dz = $("#paper-dropzone");
     const fileInput = $("#paper-pdfs");
+    const fileListEl = $("#pdf-file-list");
+    // We maintain our own array of selected files because the FileList
+    // from <input> is read-only and can't be appended to.
+    S.pdfFiles = [];
+
+    function fmtSize(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+      return (bytes / 1048576).toFixed(1) + " MB";
+    }
+
+    function renderPdfList() {
+      if (!fileListEl) return;
+      fileListEl.innerHTML = "";
+      S.pdfFiles.forEach((file, idx) => {
+        const li = el("li", {});
+        li.appendChild(el("span", { class: "pf-name", title: file.name }, file.name));
+        li.appendChild(el("span", { class: "pf-size" }, fmtSize(file.size)));
+        const rm = el("span", { class: "pf-remove", title: "remove" }, "✕");
+        rm.addEventListener("click", (e) => {
+          e.preventDefault(); e.stopPropagation();
+          S.pdfFiles.splice(idx, 1);
+          renderPdfList();
+          updateDzText();
+        });
+        li.appendChild(rm);
+        fileListEl.appendChild(li);
+      });
+    }
+
+    function updateDzText() {
+      if (!dz) return;
+      const txt = dz.querySelector(".dz-text");
+      if (!txt) return;
+      if (S.pdfFiles.length === 0) {
+        txt.textContent = "Drop PDFs here or click to browse";
+      } else {
+        txt.textContent = `${S.pdfFiles.length} PDF${S.pdfFiles.length > 1 ? "s" : ""} selected — click to add more`;
+      }
+    }
+
+    function addFiles(files) {
+      const pdfs = Array.from(files || []).filter((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
+      if (pdfs.length === 0 && files && files.length > 0) {
+        toast("Only PDF files are accepted.");
+        return;
+      }
+      // dedup by name+size
+      for (const f of pdfs) {
+        const exists = S.pdfFiles.some((existing) => existing.name === f.name && existing.size === f.size);
+        if (!exists) S.pdfFiles.push(f);
+      }
+      renderPdfList();
+      updateDzText();
+    }
+
     if (dz && fileInput) {
       // click the dropzone to open the file picker
       dz.addEventListener("click", (e) => {
         e.preventDefault();
         fileInput.click();
       });
-      // drag-and-drop: use DataTransfer to set files (assigning .files directly
-      // doesn't work in all browsers)
+      // drag-and-drop
       dz.addEventListener("dragover", (e) => { e.preventDefault(); e.stopPropagation(); dz.classList.add("drag"); });
       dz.addEventListener("dragenter", (e) => { e.preventDefault(); dz.classList.add("drag"); });
       dz.addEventListener("dragleave", (e) => { e.preventDefault(); dz.classList.remove("drag"); });
       dz.addEventListener("drop", (e) => {
         e.preventDefault(); e.stopPropagation();
         dz.classList.remove("drag");
-        const dt = new DataTransfer();
-        for (const f of e.dataTransfer.files) {
-          dt.items.add(f);
-        }
-        fileInput.files = dt.files;
-        // update dropzone text
-        const txt = dz.querySelector(".dz-text");
-        if (txt) txt.textContent = `${fileInput.files.length} PDF${fileInput.files.length > 1 ? "s" : ""} selected — click to change`;
+        addFiles(e.dataTransfer.files);
       });
-      // update text when files are selected via the file picker
+      // file picker change
       fileInput.addEventListener("change", () => {
-        const txt = dz.querySelector(".dz-text");
-        if (txt && fileInput.files.length > 0) {
-          txt.textContent = `${fileInput.files.length} PDF${fileInput.files.length > 1 ? "s" : ""} selected — click to change`;
-        } else if (txt) {
-          txt.textContent = "Drop PDFs here or click to browse";
-        }
+        addFiles(fileInput.files);
+        // reset the input so the same file can be re-selected
+        fileInput.value = "";
       });
     }
 
@@ -339,7 +384,7 @@
   // ============================================================
   async function startPaperRun() {
     const dois = $("#paper-dois").value.trim();
-    const files = $("#paper-pdfs").files;
+    const files = S.pdfFiles || [];
     const seeds = dois.split("\n").map((s) => s.trim()).filter(Boolean);
     if (!seeds.length && !files.length) {
       toast("Add at least one DOI or PDF.");
@@ -348,7 +393,7 @@
     // duplicate detection (only for DOI seeds, not PDFs)
     if (seeds.length && !files.length) {
       const shown = await checkDuplicate(seeds, []);
-      if (shown) return; // user chose to view the existing run
+      if (shown) return;
     }
     const options = collectOptions("paper");
     const fd = new FormData();

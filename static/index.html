@@ -81,14 +81,15 @@
             <textarea id="paper-dois" rows="5"
               placeholder="10.1145/2568225.2568315&#10;10.1109/TSE.2019.2919738&#10;An Empirical Study of ..."></textarea>
           </label>
-          <label class="field uploader">
+          <div class="field uploader">
             <span>…or drop PDFs</span>
-            <input type="file" id="paper-pdfs" accept="application/pdf" multiple />
+            <input type="file" id="paper-pdfs" accept="application/pdf" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;" />
             <div class="dropzone" id="paper-dropzone">
               <span class="dz-icon">⬆</span>
               <span class="dz-text">Drop PDFs here or click to browse</span>
             </div>
-          </label>
+            <ul id="pdf-file-list" class="pdf-file-list"></ul>
+          </div>
         </div>
         <details class="advanced">
           <summary>Advanced options</summary>
