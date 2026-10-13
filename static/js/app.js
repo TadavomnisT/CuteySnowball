@@ -111,17 +111,42 @@
     $("#detail-close").addEventListener("click", closeDetail);
     $("#detail-backdrop").addEventListener("click", closeDetail);
 
-    // PDF dropzone
+    // PDF dropzone — click to browse + drag-and-drop
     const dz = $("#paper-dropzone");
     const fileInput = $("#paper-pdfs");
-    dz.addEventListener("click", () => fileInput.click());
-    dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag"); });
-    dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
-    dz.addEventListener("drop", (e) => {
-      e.preventDefault();
-      dz.classList.remove("drag");
-      fileInput.files = e.dataTransfer.files;
-    });
+    if (dz && fileInput) {
+      // click the dropzone to open the file picker
+      dz.addEventListener("click", (e) => {
+        e.preventDefault();
+        fileInput.click();
+      });
+      // drag-and-drop: use DataTransfer to set files (assigning .files directly
+      // doesn't work in all browsers)
+      dz.addEventListener("dragover", (e) => { e.preventDefault(); e.stopPropagation(); dz.classList.add("drag"); });
+      dz.addEventListener("dragenter", (e) => { e.preventDefault(); dz.classList.add("drag"); });
+      dz.addEventListener("dragleave", (e) => { e.preventDefault(); dz.classList.remove("drag"); });
+      dz.addEventListener("drop", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        dz.classList.remove("drag");
+        const dt = new DataTransfer();
+        for (const f of e.dataTransfer.files) {
+          dt.items.add(f);
+        }
+        fileInput.files = dt.files;
+        // update dropzone text
+        const txt = dz.querySelector(".dz-text");
+        if (txt) txt.textContent = `${fileInput.files.length} PDF${fileInput.files.length > 1 ? "s" : ""} selected — click to change`;
+      });
+      // update text when files are selected via the file picker
+      fileInput.addEventListener("change", () => {
+        const txt = dz.querySelector(".dz-text");
+        if (txt && fileInput.files.length > 0) {
+          txt.textContent = `${fileInput.files.length} PDF${fileInput.files.length > 1 ? "s" : ""} selected — click to change`;
+        } else if (txt) {
+          txt.textContent = "Drop PDFs here or click to browse";
+        }
+      });
+    }
 
     // weight sliders — show output + persist
     $$(".weights-grid").forEach((wg) => {

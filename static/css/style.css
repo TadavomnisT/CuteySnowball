@@ -253,22 +253,29 @@ a:hover { text-decoration: underline; }
 .dropzone {
   border: 2px dashed var(--line-strong);
   border-radius: var(--radius-sm);
-  padding: 18px;
+  padding: 24px 18px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
   background: var(--surface-2);
   height: calc(100% - 28px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
+  min-height: 100px;
 }
-.dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--accent-soft); }
-.dz-icon { font-size: 1.6rem; color: var(--accent); }
+.dropzone:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); }
+.dropzone.drag { border-color: var(--accent); background: var(--accent-soft); border-width: 3px; }
+.dz-icon { font-size: 1.8rem; color: var(--accent); transition: transform 0.2s; }
+.dropzone:hover .dz-icon { transform: scale(1.15); }
+.dropzone.drag .dz-icon { transform: scale(1.25); }
 .dz-text { font-size: 0.82rem; color: var(--muted); }
-.uploader input[type=file] { display: none; }
+.uploader input[type=file] {
+  position: absolute; width: 1px; height: 1px; opacity: 0;
+  overflow: hidden; pointer-events: none;
+}
 
 .advanced { margin: 14px 0 18px; }
 .advanced summary {
