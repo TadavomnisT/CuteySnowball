@@ -85,7 +85,7 @@ Install and go to project directory:
 git clone https://github.com/TadavomnisT/CuteySnowball.git
 cd CuteySnowball
 ```
-Run the project using:
+Install dependencies and Run the project using:
 ```bash
 # 1. (optional) make a venv
 python3 -m venv .venv && source .venv/bin/activate
