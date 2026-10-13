@@ -1,6 +1,6 @@
 # CuteySnowball
 
-> A cute, pure-Python tool for **Forward &amp; Backward Snowballing** of academic
+> Python tool for **Forward &amp; Backward Snowballing** of academic
 > papers — for Systematic Literature Reviews (SLR) and Systematic Mapping
 > Studies (SMS).
 
@@ -286,15 +286,6 @@ module-by-module deep dive.
 
 ---
 
-## License
-
-**GNU General Public License v3.0** — see [`LICENSE`](LICENSE). CuteySnowball is
-free software: you can redistribute it and/or modify it under the terms of the
-GPL v3. The upstream projects retain their own licenses (MIT / Unlicense) and
-are acknowledged above and in [`docs/references.md`](docs/references.md).
-
----
-
 ## Acknowledgements
 
 CuteySnowball stands on the shoulders of:
@@ -326,3 +317,12 @@ and OpenCitations.*
   score. Treat the score as a ranking aid.
 - This is a **research tool**, not medical / legal / clinical evidence
   synthesis software.
+
+---
+
+## License
+
+**GNU General Public License v3.0** — see [`LICENSE`](LICENSE). CuteySnowball is
+free software: you can redistribute it and/or modify it under the terms of the
+GPL v3. The upstream projects retain their own licenses (MIT / Unlicense) and
+are acknowledged above and in [`docs/references.md`](docs/references.md).
