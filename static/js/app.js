@@ -111,6 +111,18 @@
     $("#detail-close").addEventListener("click", closeDetail);
     $("#detail-backdrop").addEventListener("click", closeDetail);
 
+    // Example DOI button
+    const exBtn = $("#btn-example-doi");
+    if (exBtn) exBtn.addEventListener("click", () => {
+      const examples = [
+        "10.1145/2568225.2568315",
+        "10.1109/TSE.2019.2919738",
+        "10.1145/2601248.2601268",
+      ];
+      const pick = examples[Math.floor(Math.random() * examples.length)];
+      $("#paper-dois").value = pick;
+    });
+
     // PDF dropzone — click to browse + drag-and-drop with file list
     const dz = $("#paper-dropzone");
     const fileInput = $("#paper-pdfs");
@@ -401,6 +413,14 @@
     fd.append("dois", seeds.join("\n"));
     fd.append("options", JSON.stringify(options));
     for (let i = 0; i < files.length; i++) fd.append("pdfs", files[i]);
+    // clear PDF list after submission
+    S.pdfFiles = [];
+    if ($("#pdf-file-list")) $("#pdf-file-list").innerHTML = "";
+    const dz2 = $("#paper-dropzone");
+    if (dz2) {
+      const txt2 = dz2.querySelector(".dz-text");
+      if (txt2) txt2.textContent = "Drop PDFs here or click to browse";
+    }
     await launchRun(fd);
   }
 
@@ -1938,13 +1958,14 @@
         const li = el("li");
         li.appendChild(el("span", { class: "r-status " + r.status }, r.status));
         const body = el("span", { style: "flex:1" });
-        body.appendChild(el("div", {}, `${r.mode} · ${new Date(r.created_at * 1000).toLocaleString()} · ${r.paper_count || 0} papers` + (r.message ? " · " + truncate(r.message, 60) : "")));
+        body.appendChild(el("div", {}, `${r.mode} · ${new Date(r.created_at * 1000).toLocaleString()}` + (r.message ? " · " + truncate(r.message, 50) : "")));
         const tagsDiv = el("div", { class: "r-tags" });
         (r.tags || []).forEach((t) => tagsDiv.appendChild(el("span", { class: "tag-chip" }, t)));
         if (!(r.tags || []).length) tagsDiv.appendChild(el("span", { class: "muted", style: "font-size:0.72rem" }, "no tags"));
         body.appendChild(tagsDiv);
         li.appendChild(body);
-        li.appendChild(el("span", { class: "muted" }, r.run_id));
+        if (r.paper_count) li.appendChild(el("span", { class: "r-pcount" }, `${r.paper_count} papers`));
+        li.appendChild(el("span", { class: "muted" }, r.run_id.slice(0, 8)));
         li.addEventListener("click", () => {
           S.runId = r.run_id;
           if (r.status === "running") streamRun(r.run_id);

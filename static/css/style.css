@@ -493,9 +493,9 @@ a:hover { text-decoration: underline; }
 .graph-canvas svg:active { cursor: grabbing; }
 .graph-toolbar {
   position: absolute;
-  top: 10px; left: 10px;
+  top: 8px; left: 8px; right: 8px;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   background: var(--surface);
   padding: 6px 10px;
@@ -505,9 +505,12 @@ a:hover { text-decoration: underline; }
   z-index: 5;
   box-shadow: var(--shadow);
   flex-wrap: wrap;
-  max-width: calc(100% - 20px);
+  overflow-x: auto;
 }
 .graph-toolbar .muted { color: var(--muted); }
+.graph-toolbar select, .graph-toolbar input[type=search] {
+  font-size: 0.74rem;
+}
 .tooltip {
   position: absolute;
   background: var(--surface);
@@ -643,6 +646,11 @@ tbody tr.exc { opacity: 0.55; }
 .runs-list .r-status.done { background: var(--accent2-soft); color: var(--accent2); }
 .runs-list .r-status.running { background: var(--accent-soft); color: var(--accent); }
 .runs-list .r-status.error { background: var(--danger-soft); color: var(--danger); }
+.runs-list .r-pcount {
+  font-size: 0.72rem; padding: 2px 7px; border-radius: 999px;
+  background: var(--accent2-soft); color: var(--accent2); font-weight: 600;
+  white-space: nowrap;
+}
 
 /* ---------- prose (help) ---------- */
 .prose { max-width: 760px; font-size: 0.94rem; }
